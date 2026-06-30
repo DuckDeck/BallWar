@@ -15,3 +15,11 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+# Build/export outputs
+builds/
+exports/
+*.apk
+*.aab
+*.exe
+*.dmg
+*.zip
