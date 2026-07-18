@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GameConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game_config.gd" id="1_game_config"]
+
+[resource]
+script = ExtResource("1_game_config")
+ball_speed = 980.0
+ball_gravity = 4000.0
+obstacle_bounce_restitution = 0.68
+ball_max_lifetime = 12.0
+ball_radius = 20.0
+ball_trail_duration = 0.2
+ball_trail_width_multiplier = 1.45
+launcher_position = Vector2(540, 460)
+launcher_radius = 58.0
+arena_left = 72.0
+arena_right = 1008.0
+arena_top = 240.0
+arena_bottom = 1640.0
+recovery_y = 1690.0
+initial_obstacle_position = Vector2(540, 1040)
+initial_obstacle_health = 3
+score_per_obstacle = 10
