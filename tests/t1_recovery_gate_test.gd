@@ -31,8 +31,15 @@ func _initialize() -> void:
 	while ball.get_motion_state() == Ball.MotionState.ACTIVE and recovery_start_frames < 4:
 		await physics_frame
 		recovery_start_frames += 1
-	if ball.get_motion_state() != Ball.MotionState.ROLLING:
-		push_error("The lifetime fallback must enter bottom recovery instead of disappearing.")
+	if ball.get_motion_state() != Ball.MotionState.TIMEOUT_DESCENT:
+		push_error("The lifetime fallback must visibly descend toward the trough instead of disappearing.")
+		quit(1)
+		return
+	var descent_start: Vector2 = ball.global_position
+	await physics_frame
+	var maximum_descent_step: float = controller.config.recovery_timeout_descent_speed / float(Engine.physics_ticks_per_second) + 0.1
+	if ball.global_position.distance_to(descent_start) > maximum_descent_step:
+		push_error("The lifetime fallback must not snap from mid-air to the trough.")
 		quit(1)
 		return
 	var frames_waited: int = 0

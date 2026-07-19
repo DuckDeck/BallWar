@@ -8,6 +8,7 @@ signal recovered(reason: StringName)
 
 enum MotionState {
 	ACTIVE,
+	TIMEOUT_DESCENT,
 	ROLLING,
 	LIFTING,
 	ROOF_RETURN,
@@ -73,6 +74,8 @@ func _physics_process(delta: float) -> void:
 	match _motion_state:
 		MotionState.ACTIVE:
 			_process_active_motion(delta)
+		MotionState.TIMEOUT_DESCENT:
+			_process_timeout_descent(delta)
 		MotionState.ROLLING:
 			_process_bottom_roll(delta)
 		MotionState.LIFTING:
@@ -130,9 +133,25 @@ func _process_active_motion(delta: float) -> void:
 		return
 	_update_trail(delta)
 	if runtime_state.elapsed_seconds >= config.ball_max_lifetime:
-		_begin_bottom_recovery(&"lifetime_expired")
+		_begin_lifetime_recovery()
 	elif global_position.y >= config.recovery_y:
 		_begin_bottom_recovery(&"bottom_exit")
+
+func _begin_lifetime_recovery() -> void:
+	if _motion_state != MotionState.ACTIVE:
+		return
+	_pending_recovery_reason = &"lifetime_expired"
+	velocity = Vector2.ZERO
+	_motion_state = MotionState.TIMEOUT_DESCENT
+	_clear_trail()
+
+func _process_timeout_descent(delta: float) -> void:
+	var target_x: float = clampf(global_position.x, config.arena_left, config.arena_right)
+	var target: Vector2 = Vector2(target_x, config.get_bottom_trough_y(target_x) - _get_radius())
+	global_position = global_position.move_toward(target, config.recovery_timeout_descent_speed * delta)
+	if global_position.distance_to(target) <= 0.1:
+		global_position = target
+		_enter_bottom_recovery()
 
 func _resolve_collision(collision: KinematicCollision2D) -> HitResult:
 	var collider: Node = collision.get_collider() as Node
@@ -159,6 +178,9 @@ func _begin_bottom_recovery(reason: StringName = &"bottom_trough") -> void:
 	if _motion_state != MotionState.ACTIVE:
 		return
 	_pending_recovery_reason = reason
+	_enter_bottom_recovery()
+
+func _enter_bottom_recovery() -> void:
 	var center_x: float = (config.arena_left + config.arena_right) * 0.5
 	if is_equal_approx(global_position.x, center_x):
 		_recovery_direction = signf(velocity.x)
@@ -283,4 +305,3 @@ func _draw() -> void:
 	var color: Color = get_visual_color()
 	var radius: float = _get_radius()
 	draw_circle(Vector2.ZERO, radius, color)
-	draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 24, Color("f7ffb2"), 2.0)

@@ -5,8 +5,6 @@ signal launch_requested(direction: Vector2)
 
 @export var config: GameConfig
 
-const BALL_OUTLINE_COLOR: Color = Color("f7ffb2")
-
 var _is_dragging: bool = false
 var _is_launch_ready: bool = true
 var _pointer_position: Vector2 = Vector2.ZERO
@@ -103,7 +101,6 @@ func _draw() -> void:
 		var position: Vector2 = _get_waiting_ball_position(index)
 		var color: Color = _waiting_definitions[index].visual_color
 		draw_circle(position, config.ball_radius, color)
-		draw_arc(position, config.ball_radius + 3.0, 0.0, TAU, 24, BALL_OUTLINE_COLOR, 2.0)
 	if _is_dragging:
 		var aim_direction: Vector2 = _pointer_position - global_position
 		if aim_direction.length_squared() > 0.0:

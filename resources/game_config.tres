@@ -5,6 +5,8 @@
 [resource]
 script = ExtResource("1_game_config")
 ball_gravity = 4000.0
+ball_radius = 13.333
+ball_trail_duration = 0.32
 ball_palette = PackedColorArray(0.851, 1, 0.247, 1, 0.725, 0.424, 1, 1, 1, 0.557, 0.31, 1, 0.286, 0.91, 1, 1, 1, 0.357, 0.741, 1, 0.706, 1, 0.345, 1, 1, 0.827, 0.31, 1, 0.498, 0.612, 1, 1, 1, 0.439, 0.365, 1, 0.408, 0.941, 0.757, 1)
 recovery_roll_speed = 1640.0
 recovery_lift_speed = 2200.0

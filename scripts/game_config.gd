@@ -12,7 +12,7 @@ extends Resource
 # 每次碰撞后的速度上限，防止连续障碍反弹的倍率累积。
 @export_range(500.0, 4000.0, 10.0, "suffix:px/s") var ball_max_rebound_speed: float = 1400.0
 @export var ball_max_lifetime: float = 12.0
-@export var ball_radius: float = 20.0
+@export var ball_radius: float = 13.333
 
 @export_group("Ball Batch")
 @export_range(1, 10, 1) var initial_ball_count: int = 1
@@ -28,7 +28,7 @@ extends Resource
 
 @export_group("Ball Trail")
 # 拖尾保留的历史时长（秒）：越大尾巴越长；建议保持在 0.15~0.25 秒以兼顾清晰度与性能。
-@export_range(0.05, 0.50, 0.01, "suffix:s") var ball_trail_duration: float = 0.20
+@export_range(0.05, 0.50, 0.01, "suffix:s") var ball_trail_duration: float = 0.32
 # 拖尾在球头处的最大宽度相对球半径的倍数；越大越接近参考图的水滴状球头。
 @export_range(0.50, 2.00, 0.05) var ball_trail_width_multiplier: float = 1.45
 
@@ -57,6 +57,8 @@ extends Resource
 @export var recovery_roll_speed: float = 820.0
 @export var recovery_lift_speed: float = 1100.0
 @export var recovery_roof_speed: float = 860.0
+# 球达到最长存活时间后的可见下落速度；用于替代从空中直接吸附到托底线的跳变。
+@export var recovery_timeout_descent_speed: float = 1100.0
 # 仅用于异常兜底；正常回合会先经过托底回收流程。
 @export var recovery_y: float = 1880.0
 
