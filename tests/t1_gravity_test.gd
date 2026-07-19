@@ -11,6 +11,30 @@ func _initialize() -> void:
 	await process_frame
 	var controller: GameController = main.get_node("GameController") as GameController
 	var ball_layer: Node2D = main.get_node("BallLayer") as Node2D
+	var launcher: Launcher = main.get_node("Launcher") as Launcher
+	assert(launcher.is_launch_ready(), "A waiting ball must be visible at the roof gap while the round is READY.")
+	if launcher.global_position != controller.config.launcher_position:
+		push_error("Launcher visual and ball spawn positions must stay aligned.")
+		quit(1)
+		return
+	var launch_probe: Ball = BALL_SCENE.instantiate() as Ball
+	launch_probe.config = controller.config
+	ball_layer.add_child(launch_probe)
+	launch_probe.global_position = controller.config.launcher_position
+	launch_probe.launch(Vector2.DOWN)
+	var launch_origin_y: float = launch_probe.global_position.y
+	var entered_playfield: bool = false
+	var launch_frames: int = 0
+	while not entered_playfield and launch_frames < 3:
+		await physics_frame
+		entered_playfield = launch_probe.global_position.y > launch_origin_y
+		launch_frames += 1
+	if not entered_playfield:
+		push_error("A ball launched from the roof gap must enter the playfield without an immediate roof collision.")
+		quit(1)
+		return
+	launch_probe.queue_free()
+	await process_frame
 	var gravity_probe: Ball = BALL_SCENE.instantiate() as Ball
 	gravity_probe.config = controller.config
 	ball_layer.add_child(gravity_probe)

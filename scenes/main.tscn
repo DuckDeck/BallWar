@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Resource" path="res://resources/game_config.tres" id="2_config"]
@@ -18,11 +18,19 @@ b = Vector2(1008, 1640)
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_roof"]
 a = Vector2(72, 240)
-b = Vector2(540, 400)
+b = Vector2(492, 400)
+
+[sub_resource type="SegmentShape2D" id="SegmentShape2D_left_roof_drop"]
+a = Vector2(492, 400)
+b = Vector2(492, 420)
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_right_roof"]
-a = Vector2(540, 400)
+a = Vector2(588, 400)
 b = Vector2(1008, 240)
+
+[sub_resource type="SegmentShape2D" id="SegmentShape2D_right_roof_drop"]
+a = Vector2(588, 400)
+b = Vector2(588, 420)
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -44,8 +52,14 @@ shape = SubResource("SegmentShape2D_right_wall")
 [node name="LeftRoof" type="CollisionShape2D" parent="Boundaries"]
 shape = SubResource("SegmentShape2D_left_roof")
 
+[node name="LeftRoofDrop" type="CollisionShape2D" parent="Boundaries"]
+shape = SubResource("SegmentShape2D_left_roof_drop")
+
 [node name="RightRoof" type="CollisionShape2D" parent="Boundaries"]
 shape = SubResource("SegmentShape2D_right_roof")
+
+[node name="RightRoofDrop" type="CollisionShape2D" parent="Boundaries"]
+shape = SubResource("SegmentShape2D_right_roof_drop")
 
 [node name="ObstacleLayer" type="Node2D" parent="."]
 
@@ -53,7 +67,7 @@ shape = SubResource("SegmentShape2D_right_roof")
 
 [node name="Launcher" type="Node2D" parent="."]
 unique_name_in_owner = true
-position = Vector2(540, 460)
+position = Vector2(540, 410)
 script = ExtResource("4_launcher")
 config = ExtResource("2_config")
 
@@ -71,9 +85,9 @@ obstacle_layer = NodePath("../ObstacleLayer")
 [node name="ScoreLabel" type="Label" parent="CanvasLayer"]
 unique_name_in_owner = true
 offset_left = 96.0
-offset_top = 284.0
+offset_top = 342.0
 offset_right = 400.0
-offset_bottom = 344.0
+offset_bottom = 402.0
 theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
 theme_override_font_sizes/font_size = 38
 text = "Score: 0"

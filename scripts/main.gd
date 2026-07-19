@@ -8,7 +8,12 @@ extends Node2D
 func _ready() -> void:
 	_launcher.launch_requested.connect(_game_controller.request_launch)
 	_game_controller.score_changed.connect(_on_score_changed)
+	_game_controller.state_changed.connect(_on_state_changed)
+	_launcher.set_launch_ready(true)
 	_score_label.text = "Score: 0"
 
 func _on_score_changed(score: int) -> void:
 	_score_label.text = "Score: %d" % score
+
+func _on_state_changed(state: int) -> void:
+	_launcher.set_launch_ready(state == GameController.State.READY)

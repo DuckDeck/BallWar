@@ -46,6 +46,8 @@ func _initialize() -> void:
 	assert(gravity_probe.velocity.y > 0.0, "Gravity must turn an upward ball into a falling ball.")
 	gravity_probe.queue_free()
 	await process_frame
+	# 本回归用受控重力确保斜向球会先命中侧墙；不改项目资源中的用户调参值。
+	controller.config.ball_gravity = 1400.0
 	controller.config.ball_max_lifetime = 1.2
 	_simulate_playfield_launch(launcher, Vector2(180.0, 180.0))
 	var reflected_from_side_wall: bool = false

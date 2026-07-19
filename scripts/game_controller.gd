@@ -73,8 +73,8 @@ func _on_ball_recovered(_reason: StringName) -> void:
 func _finish_turn() -> void:
 	if _active_obstacle == null:
 		_spawn_obstacle()
-	_turn += 1
-	turn_changed.emit(_turn)
+		_turn += 1
+		turn_changed.emit(_turn)
 	_set_state(State.READY)
 
 func _set_state(next_state: State) -> void:
