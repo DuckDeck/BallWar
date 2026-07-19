@@ -8,3 +8,4 @@ mode = 1
 display_name = "挑战模式"
 timed_wave_interval_seconds = 5.0
 temporary_ball_gain_per_timed_wave = 1
+timed_wave_scroll_duration_seconds = 0.4

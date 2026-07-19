@@ -15,6 +15,9 @@ enum MotionState {
 
 var runtime_state: BallRuntimeState = BallRuntimeState.new()
 var _is_active: bool = false
+var _board_shift_offset: Vector2 = Vector2.ZERO
+var _board_shift_duration_seconds: float = 0.0
+var _board_shift_elapsed_seconds: float = 0.0
 var _motion_state: int = MotionState.ACTIVE
 var _recovery_direction: float = 1.0
 var _pending_recovery_reason: StringName = &"bottom_trough"
@@ -56,9 +59,17 @@ func freeze_for_game_over() -> void:
 	runtime_state.velocity = Vector2.ZERO
 	_clear_trail()
 
+func begin_board_shift(offset: Vector2, duration_seconds: float) -> void:
+	if not _is_active or runtime_state.is_recovered:
+		return
+	_board_shift_offset = offset
+	_board_shift_duration_seconds = maxf(duration_seconds, 0.001)
+	_board_shift_elapsed_seconds = 0.0
+
 func _physics_process(delta: float) -> void:
 	if not _is_active or runtime_state.is_recovered:
 		return
+	_apply_board_shift(delta)
 	match _motion_state:
 		MotionState.ACTIVE:
 			_process_active_motion(delta)
@@ -69,6 +80,25 @@ func _physics_process(delta: float) -> void:
 		MotionState.ROOF_RETURN:
 			_process_roof_return(delta)
 	runtime_state.velocity = velocity
+
+func _apply_board_shift(delta: float) -> void:
+	if _board_shift_elapsed_seconds >= _board_shift_duration_seconds:
+		return
+	var previous_progress: float = _board_shift_elapsed_seconds / _board_shift_duration_seconds
+	_board_shift_elapsed_seconds = minf(_board_shift_elapsed_seconds + delta, _board_shift_duration_seconds)
+	var current_progress: float = _board_shift_elapsed_seconds / _board_shift_duration_seconds
+	# 与棋盘 Tween 的 QUAD / EASE_OUT 相同：1 - (1 - t)^2。
+	var previous_eased: float = 1.0 - pow(1.0 - previous_progress, 2.0)
+	var current_eased: float = 1.0 - pow(1.0 - current_progress, 2.0)
+	var frame_offset: Vector2 = _board_shift_offset * (current_eased - previous_eased)
+	global_position += frame_offset
+	_translate_trail(frame_offset)
+
+func _translate_trail(offset: Vector2) -> void:
+	if offset.is_zero_approx():
+		return
+	for index: int in _trail_points.size():
+		_trail_points[index] += offset
 
 func get_motion_state() -> int:
 	return _motion_state

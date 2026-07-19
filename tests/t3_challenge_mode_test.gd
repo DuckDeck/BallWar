@@ -27,26 +27,36 @@ func _initialize() -> void:
 	assert(preview_before_wave.size() == 1, "Challenge mode must begin with the configured initial ball count.")
 	controller.request_launch(Vector2.DOWN)
 	assert(controller.get_state() == GameController.State.BALLS_ACTIVE and manager.get_active_ball_count() == 1, "The first challenge ball must become active before the timed wave.")
+	var active_ball: Ball = manager.get_active_balls(1)[0]
+	var active_motion_time_before_wave: float = active_ball.runtime_state.elapsed_seconds
 	clock.wave_due.emit()
 	controller._physics_process(0.0)
+	assert(controller.get_state() == GameController.State.BALLS_ACTIVE and manager.get_active_ball_count() == 1, "A timed wave must not pause, remove, or resolve the active ball batch.")
+	await create_timer(0.2).timeout
+	assert(active_ball.runtime_state.elapsed_seconds > active_motion_time_before_wave, "An active ball must continue its own physics simulation during the board scroll.")
+	await create_timer(0.3).timeout
 	var cells_after_wave: Array[Vector2i] = board.get_cells()
 	var has_advanced_cell: bool = false
 	var has_new_bottom_cell: bool = false
 	for cell: Vector2i in cells_after_wave:
 		has_advanced_cell = has_advanced_cell or cell.y >= 1
 		has_new_bottom_cell = has_new_bottom_cell or cell.y == 0
-	assert(has_advanced_cell and has_new_bottom_cell, "A timed wave must advance old blocks and add one new bottom row while the ball is active.")
-	assert(controller.get_state() == GameController.State.BALLS_ACTIVE and manager.get_active_ball_count() == 1, "A timed wave must not pause, remove, or resolve the active ball batch.")
-	assert(controller.get_launcher_preview_definitions().size() == 2, "A successful timed wave must temporarily add one ball for the next batch.")
+	assert(has_advanced_cell and has_new_bottom_cell, "A timed wave must advance old blocks, complete the scroll, and then add one new bottom row while the ball is active.")
+	assert(controller.get_launcher_preview_definitions().size() == 1, "A successful timed wave must add one available launcher ball while the previous ball remains active.")
+	assert(controller.can_request_launch(), "Challenge mode must allow launching when at least one ball is waiting at the launcher, even while another ball is active.")
+	controller.request_launch(Vector2.DOWN)
+	assert(manager.get_active_ball_count() == 2, "A waiting challenge ball must launch without waiting for the previous ball batch to return.")
 	clock.stop_clock()
 	var cells_before_recovery: Array[Vector2i] = board.get_cells()
-	var active_ball: Ball = manager.get_active_balls(1)[0]
 	active_ball.force_recover(&"test")
+	for ball: Ball in manager.get_active_balls(2):
+		ball.force_recover(&"test")
 	assert(controller.get_state() == GameController.State.READY, "A completed challenge batch must restore launch readiness.")
 	assert(board.get_cells() == cells_before_recovery, "A completed challenge batch must not advance the board or spawn a row.")
 	var timed_wave_count: int = 2
 	while not board.is_game_over() and timed_wave_count < 20:
-		board.resolve_timed_wave(2)
+		board.resolve_timed_wave(2, 0.0)
+		await process_frame
 		timed_wave_count += 1
 	assert(board.is_game_over() and controller.get_state() == GameController.State.GAME_OVER, "A timed danger-line failure must stop challenge mode.")
 	print("T3 challenge mode test passed: menu gate, timed waves, active-ball concurrency, batch separation, and danger stop verified.")

@@ -3,6 +3,7 @@ extends Node
 
 signal batch_finished(batch_id: int)
 signal launch_queue_changed(queued_definitions: Array[BallDefinition])
+signal ball_recovered(definition: BallDefinition)
 
 @export var config: GameConfig
 @export var ball_scene: PackedScene
@@ -60,6 +61,12 @@ func freeze_active_balls_for_game_over() -> void:
 			if is_instance_valid(ball):
 				ball.freeze_for_game_over()
 
+func begin_board_shift(offset: Vector2, duration_seconds: float) -> void:
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		for ball: Ball in sequence.active_balls.values():
+			if is_instance_valid(ball):
+				ball.begin_board_shift(offset, duration_seconds)
+
 func _launch_next_ball(sequence: BallLaunchSequence) -> void:
 	if sequence.pending_definitions.is_empty():
 		_maybe_finish_batch(sequence)
@@ -85,6 +92,7 @@ func _on_ball_recovered(_reason: StringName, batch_id: int, ball: Ball) -> void:
 	if sequence == null or not sequence.active_balls.has(ball.get_instance_id()):
 		return
 	sequence.active_balls.erase(ball.get_instance_id())
+	ball_recovered.emit(ball.definition)
 	if is_instance_valid(ball):
 		ball.queue_free()
 	_maybe_finish_batch(sequence)

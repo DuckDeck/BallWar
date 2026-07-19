@@ -13,6 +13,7 @@ func _ready() -> void:
 	_launcher.launch_requested.connect(_game_controller.request_launch)
 	_game_controller.score_changed.connect(_on_score_changed)
 	_game_controller.state_changed.connect(_on_state_changed)
+	_game_controller.launcher_launchability_changed.connect(_on_launcher_launchability_changed)
 	_game_controller.elapsed_time_changed.connect(_on_elapsed_time_changed)
 	_game_controller.launcher_preview_changed.connect(_on_launcher_preview_changed)
 	_game_controller.game_mode_changed.connect(_on_game_mode_changed)
@@ -37,7 +38,10 @@ func _on_score_changed(score: int) -> void:
 	_score_label.text = "Score: %d" % score
 
 func _on_state_changed(state: int) -> void:
-	_launcher.set_launch_ready(state == GameController.State.READY)
+	_launcher.set_launch_ready(_game_controller.can_request_launch())
+
+func _on_launcher_launchability_changed(is_ready: bool) -> void:
+	_launcher.set_launch_ready(is_ready)
 
 func _on_elapsed_time_changed(elapsed_seconds: int) -> void:
 	_time_label.text = _format_elapsed_time(elapsed_seconds)

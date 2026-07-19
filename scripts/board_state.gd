@@ -32,6 +32,9 @@ func advance_rows() -> Dictionary:
 func get_cell_for_obstacle(obstacle_id: int) -> Vector2i:
 	return _cell_by_obstacle_id.get(obstacle_id, Vector2i(-1, -1)) as Vector2i
 
+func get_cells_by_obstacle_id() -> Dictionary:
+	return _cell_by_obstacle_id.duplicate()
+
 func get_occupied_cells() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell: Vector2i in _cells.keys():

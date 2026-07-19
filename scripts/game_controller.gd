@@ -7,6 +7,7 @@ signal state_changed(state: int)
 signal elapsed_time_changed(elapsed_seconds: int)
 signal game_over(final_score: int, reached_turn: int)
 signal launcher_preview_changed(definitions: Array[BallDefinition])
+signal launcher_launchability_changed(is_ready: bool)
 signal challenge_wave_remaining_changed(remaining_seconds: int)
 signal game_mode_changed(mode: int)
 
@@ -35,6 +36,7 @@ var _active_mode: GameModeDefinition
 var _current_ball_count: int = 1
 var _classic_safe_turns: int = 0
 var _pending_timed_wave: bool = false
+var _challenge_available_definitions: Array[BallDefinition] = []
 
 func _ready() -> void:
 	assert(config != null, "GameController requires a GameConfig resource.")
@@ -45,8 +47,10 @@ func _ready() -> void:
 	assert(challenge_mode != null, "GameController requires a challenge GameModeDefinition.")
 	ball_manager.batch_finished.connect(_on_batch_finished)
 	ball_manager.launch_queue_changed.connect(_on_launch_queue_changed)
+	ball_manager.ball_recovered.connect(_on_ball_recovered)
 	board_controller.obstacle_destroyed.connect(_on_obstacle_destroyed)
 	board_controller.game_over_requested.connect(_on_board_game_over_requested)
+	board_controller.timed_wave_scroll_started.connect(_on_timed_wave_scroll_started)
 	challenge_wave_clock.wave_due.connect(_on_challenge_wave_due)
 	challenge_wave_clock.remaining_seconds_changed.connect(_on_challenge_wave_remaining_changed)
 	score_changed.emit(_score)
@@ -65,14 +69,18 @@ func start_game(mode: GameModeDefinition) -> void:
 	_active_mode = mode
 	_current_ball_count = config.initial_ball_count
 	_classic_safe_turns = 0
+	_challenge_available_definitions.clear()
 	_elapsed_time = 0.0
 	_displayed_elapsed_seconds = 0
 	board_controller.initialize_board(_current_ball_count)
+	if _active_mode.uses_timed_waves():
+		_challenge_available_definitions.append_array(_build_ball_definitions())
 	game_mode_changed.emit(_active_mode.mode)
 	if _active_mode.uses_timed_waves():
 		challenge_wave_clock.start_clock(_active_mode.timed_wave_interval_seconds)
 	_set_state(State.READY)
 	_publish_launcher_preview()
+	_publish_launcher_launchability()
 
 func _process(delta: float) -> void:
 	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:
@@ -94,12 +102,18 @@ func get_elapsed_seconds() -> int:
 	return _displayed_elapsed_seconds
 
 func request_launch(direction: Vector2) -> void:
-	if _state != State.READY or direction.length_squared() <= 0.0:
+	if direction.length_squared() <= 0.0 or not can_request_launch():
 		return
-	var batch: BallBatch = BallBatch.new(_next_batch_id, _build_ball_definitions(), config.launch_spread_degrees)
+	var definitions: Array[BallDefinition] = _build_ball_definitions()
+	if _active_mode != null and _active_mode.uses_timed_waves():
+		definitions = _challenge_available_definitions.duplicate()
+		_challenge_available_definitions.clear()
+	var batch: BallBatch = BallBatch.new(_next_batch_id, definitions, config.launch_spread_degrees)
 	_next_batch_id += 1
 	ball_manager.launch_batch(batch, config.launcher_position, direction)
 	_set_state(State.BALLS_ACTIVE)
+	_publish_launcher_preview()
+	_publish_launcher_launchability()
 
 func get_state() -> State:
 	return _state
@@ -110,6 +124,8 @@ func get_score() -> int:
 func get_launcher_preview_definitions() -> Array[BallDefinition]:
 	if _state == State.MODE_SELECTION:
 		return []
+	if _active_mode != null and _active_mode.uses_timed_waves():
+		return _challenge_available_definitions.duplicate()
 	return _build_ball_definitions()
 
 func get_active_mode() -> int:
@@ -119,10 +135,13 @@ func _build_ball_definitions() -> Array[BallDefinition]:
 	var definitions: Array[BallDefinition] = []
 	var ball_count: int = _current_ball_count
 	for ball_index: int in ball_count:
-		var definition: BallDefinition = BallDefinition.new()
-		definition.visual_color = config.ball_palette[ball_index % config.ball_palette.size()]
-		definitions.append(definition)
+		definitions.append(_create_ball_definition(ball_index))
 	return definitions
+
+func _create_ball_definition(ball_index: int) -> BallDefinition:
+	var definition: BallDefinition = BallDefinition.new()
+	definition.visual_color = config.ball_palette[ball_index % config.ball_palette.size()]
+	return definition
 
 func _on_obstacle_destroyed(points: int) -> void:
 	_score += points
@@ -132,8 +151,10 @@ func _on_batch_finished(batch_id: int) -> void:
 	if _state != State.BALLS_ACTIVE:
 		return
 	if _active_mode != null and _active_mode.uses_timed_waves():
+		if ball_manager.get_active_ball_count() == 0:
+			_set_state(State.READY)
 		_publish_launcher_preview()
-		_set_state(State.READY)
+		_publish_launcher_launchability()
 		return
 	_set_state(State.RESOLVING)
 	call_deferred("_resolve_completed_batch", batch_id)
@@ -161,11 +182,15 @@ func _resolve_timed_wave() -> void:
 		_current_ball_count + _active_mode.temporary_ball_gain_per_timed_wave,
 		config.maximum_ball_count
 	)
-	var is_safe_wave: bool = board_controller.resolve_timed_wave(next_ball_count)
+	var is_safe_wave: bool = board_controller.resolve_timed_wave(next_ball_count, _active_mode.timed_wave_scroll_duration_seconds)
 	if not is_safe_wave:
 		return
+	var added_ball_count: int = next_ball_count - _current_ball_count
 	_current_ball_count = next_ball_count
+	for ball_index: int in added_ball_count:
+		_challenge_available_definitions.append(_create_ball_definition(_current_ball_count - added_ball_count + ball_index))
 	_publish_launcher_preview()
+	_publish_launcher_launchability()
 
 func _get_classic_next_ball_count() -> int:
 	_classic_safe_turns += 1
@@ -173,10 +198,29 @@ func _get_classic_next_ball_count() -> int:
 	return mini(config.initial_ball_count + growth_steps, config.maximum_ball_count)
 
 func _on_launch_queue_changed(queued_definitions: Array[BallDefinition]) -> void:
+	if _active_mode != null and _active_mode.uses_timed_waves():
+		return
 	launcher_preview_changed.emit(queued_definitions)
 
+func _on_ball_recovered(definition: BallDefinition) -> void:
+	if _active_mode == null or not _active_mode.uses_timed_waves() or _state == State.GAME_OVER:
+		return
+	_challenge_available_definitions.append(definition)
+	_publish_launcher_preview()
+	_publish_launcher_launchability()
+
 func _publish_launcher_preview() -> void:
-	launcher_preview_changed.emit(_build_ball_definitions())
+	launcher_preview_changed.emit(get_launcher_preview_definitions())
+
+func _publish_launcher_launchability() -> void:
+	launcher_launchability_changed.emit(can_request_launch())
+
+func can_request_launch() -> bool:
+	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:
+		return false
+	if _active_mode != null and _active_mode.uses_timed_waves():
+		return not _challenge_available_definitions.is_empty()
+	return _state == State.READY
 
 func _on_board_game_over_requested() -> void:
 	if _state == State.GAME_OVER:
@@ -184,7 +228,11 @@ func _on_board_game_over_requested() -> void:
 	_set_state(State.GAME_OVER)
 	challenge_wave_clock.stop_clock()
 	ball_manager.freeze_active_balls_for_game_over()
+	_publish_launcher_launchability()
 	game_over.emit(_score, _turn)
+
+func _on_timed_wave_scroll_started(offset: Vector2, duration_seconds: float) -> void:
+	ball_manager.begin_board_shift(offset, duration_seconds)
 
 func _on_challenge_wave_remaining_changed(remaining_seconds: int) -> void:
 	if _active_mode != null and _active_mode.uses_timed_waves():
@@ -193,3 +241,4 @@ func _on_challenge_wave_remaining_changed(remaining_seconds: int) -> void:
 func _set_state(next_state: State) -> void:
 	_state = next_state
 	state_changed.emit(_state)
+	_publish_launcher_launchability()
