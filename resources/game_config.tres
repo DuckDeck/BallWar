@@ -1,50 +1,11 @@
-[gd_resource type="Resource" script_class="GameConfig" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="GameConfig" format=3 uid="uid://cnm52dgkbwd4j"]
 
-[ext_resource type="Script" path="res://scripts/game_config.gd" id="1_game_config"]
+[ext_resource type="Script" uid="uid://do8p37rimeql3" path="res://scripts/game_config.gd" id="1_game_config"]
 
 [resource]
 script = ExtResource("1_game_config")
-ball_speed = 980.0
 ball_gravity = 4000.0
-obstacle_bounce_restitution = 1.36
-ball_max_lifetime = 12.0
-ball_radius = 20.0
-initial_ball_count = 1
-maximum_ball_count = 10
-safe_turns_per_ball_growth = 1
-launch_spread_degrees = 0.0
-ball_launch_interval_seconds = 0.1
 ball_palette = PackedColorArray(0.851, 1, 0.247, 1, 0.725, 0.424, 1, 1, 1, 0.557, 0.31, 1, 0.286, 0.91, 1, 1, 1, 0.357, 0.741, 1, 0.706, 1, 0.345, 1, 1, 0.827, 0.31, 1, 0.498, 0.612, 1, 1, 1, 0.439, 0.365, 1, 0.408, 0.941, 0.757, 1)
-ball_trail_duration = 0.2
-ball_trail_width_multiplier = 1.45
-launcher_position = Vector2(540, 450)
-launcher_radius = 20.0
-aim_guide_max_length = 1800.0
-aim_guide_reflection_length = 220.0
-arena_left = 72.0
-arena_right = 1008.0
-arena_top = 240.0
-roof_apex_y = 400.0
-roof_gap_width = 96.0
-roof_gap_drop = 20.0
-arena_bottom = 1640.0
-bottom_trough_center_y = 1660.0
-bottom_trough_edge_y = 1710.0
 recovery_roll_speed = 1640.0
 recovery_lift_speed = 2200.0
 recovery_roof_speed = 1720.0
-recovery_y = 1880.0
-initial_obstacle_position = Vector2(540, 1040)
-initial_obstacle_health = 3
-score_per_obstacle = 10
-board_columns = 7
-board_cell_size = Vector2(120, 120)
-board_bottom_row_y = 1420.0
-board_danger_line_y = 420.0
-wave_seed = 20260719
-wave_min_blocks = 1
-wave_max_blocks = 3
-wave_initial_health = 3
-wave_health_variance = 2
-wave_health_growth_per_turn = 1
-wave_max_health = 99

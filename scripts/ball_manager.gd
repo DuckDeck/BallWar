@@ -54,6 +54,12 @@ func get_pending_ball_count(batch_id: int) -> int:
 	var sequence: BallLaunchSequence = _get_sequence(batch_id)
 	return 0 if sequence == null else sequence.pending_definitions.size()
 
+func freeze_active_balls_for_game_over() -> void:
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		for ball: Ball in sequence.active_balls.values():
+			if is_instance_valid(ball):
+				ball.freeze_for_game_over()
+
 func _launch_next_ball(sequence: BallLaunchSequence) -> void:
 	if sequence.pending_definitions.is_empty():
 		_maybe_finish_batch(sequence)

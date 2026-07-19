@@ -17,6 +17,7 @@ var runtime_state: BallRuntimeState = BallRuntimeState.new()
 var _is_active: bool = false
 var _motion_state: int = MotionState.ACTIVE
 var _recovery_direction: float = 1.0
+var _pending_recovery_reason: StringName = &"bottom_trough"
 var _roof_return_targets: Array[Vector2] = []
 var _roof_return_target_index: int = 0
 var _trail: Line2D
@@ -46,6 +47,14 @@ func launch(direction: Vector2) -> void:
 
 func force_recover(reason: StringName) -> void:
 	_recover(reason)
+
+func freeze_for_game_over() -> void:
+	if runtime_state.is_recovered:
+		return
+	_is_active = false
+	velocity = Vector2.ZERO
+	runtime_state.velocity = Vector2.ZERO
+	_clear_trail()
 
 func _physics_process(delta: float) -> void:
 	if not _is_active or runtime_state.is_recovered:
@@ -83,15 +92,17 @@ func _process_active_motion(delta: float) -> void:
 		runtime_state.is_gravity_enabled = true
 		var hit_result: HitResult = _resolve_collision(collision)
 		if hit_result.should_bounce:
-			velocity = velocity.bounce(collision.get_normal()) * hit_result.bounce_multiplier
+			# Cap every rebound to prevent repeated obstacle multipliers from compounding.
+			var bounced_velocity: Vector2 = velocity.bounce(collision.get_normal()) * hit_result.bounce_multiplier
+			velocity = bounced_velocity.limit_length(config.ball_max_rebound_speed)
 	if _has_reached_bottom_trough():
 		_begin_bottom_recovery()
 		return
 	_update_trail(delta)
 	if runtime_state.elapsed_seconds >= config.ball_max_lifetime:
-		_recover(&"lifetime_expired")
+		_begin_bottom_recovery(&"lifetime_expired")
 	elif global_position.y >= config.recovery_y:
-		_recover(&"bottom_exit")
+		_begin_bottom_recovery(&"bottom_exit")
 
 func _resolve_collision(collision: KinematicCollision2D) -> HitResult:
 	var collider: Node = collision.get_collider() as Node
@@ -114,7 +125,10 @@ func _has_reached_bottom_trough() -> bool:
 	var trough_y: float = config.get_bottom_trough_y(global_position.x)
 	return global_position.y + _get_radius() >= trough_y
 
-func _begin_bottom_recovery() -> void:
+func _begin_bottom_recovery(reason: StringName = &"bottom_trough") -> void:
+	if _motion_state != MotionState.ACTIVE:
+		return
+	_pending_recovery_reason = reason
 	var center_x: float = (config.arena_left + config.arena_right) * 0.5
 	if is_equal_approx(global_position.x, center_x):
 		_recovery_direction = signf(velocity.x)
@@ -163,7 +177,7 @@ func _build_roof_return_path() -> void:
 
 func _process_roof_return(delta: float) -> void:
 	if _roof_return_target_index >= _roof_return_targets.size():
-		_recover(&"bottom_trough")
+		_recover(_pending_recovery_reason)
 		return
 	var target: Vector2 = _roof_return_targets[_roof_return_target_index]
 	global_position = global_position.move_toward(target, config.recovery_roof_speed * delta)
@@ -171,7 +185,7 @@ func _process_roof_return(delta: float) -> void:
 		global_position = target
 		_roof_return_target_index += 1
 		if _roof_return_target_index >= _roof_return_targets.size():
-			_recover(&"bottom_trough")
+			_recover(_pending_recovery_reason)
 
 func _recover(reason: StringName) -> void:
 	if runtime_state.is_recovered:

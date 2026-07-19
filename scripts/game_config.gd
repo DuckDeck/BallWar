@@ -9,6 +9,8 @@ extends Resource
 @export var ball_gravity: float = 1400.0
 # 六边形等障碍物碰撞后的速度保留比例：0=完全不反弹，1=保持全部速度；数值越小反弹越弱。
 @export_range(0.0, 2.0, 0.01) var obstacle_bounce_restitution: float = 1.36
+# 每次碰撞后的速度上限，防止连续障碍反弹的倍率累积。
+@export_range(500.0, 4000.0, 10.0, "suffix:px/s") var ball_max_rebound_speed: float = 1400.0
 @export var ball_max_lifetime: float = 12.0
 @export var ball_radius: float = 20.0
 
@@ -78,8 +80,8 @@ func get_bottom_trough_y(world_x: float) -> float:
 @export_group("Wave Progression")
 @export var wave_seed: int = 20260719
 @export_range(1, 12, 1) var wave_min_blocks: int = 1
-@export_range(1, 12, 1) var wave_max_blocks: int = 3
-@export_range(1, 999, 1) var wave_initial_health: int = 3
-@export_range(0, 99, 1) var wave_health_variance: int = 2
-@export_range(0, 99, 1) var wave_health_growth_per_turn: int = 1
-@export_range(1, 999, 1) var wave_max_health: int = 99
+@export_range(1, 12, 1) var wave_max_blocks: int = 7
+# 新障碍数字范围 = 下一回合可控球数 × 此最小倍率。
+@export_range(1, 10, 1) var wave_health_min_ball_multiplier: int = 1
+# 新障碍数字范围 = 下一回合可控球数 × 此最大倍率。
+@export_range(1, 10, 1) var wave_health_max_ball_multiplier: int = 2

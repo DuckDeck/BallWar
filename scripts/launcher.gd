@@ -86,6 +86,8 @@ func get_aim_guide_segments(direction: Vector2) -> Array[PackedVector2Array]:
 	var safe_fraction: float = cast_result[0] if not cast_result.is_empty() else 1.0
 	if safe_fraction < 1.0:
 		primary_end = primary_start + motion * safe_fraction
+		shape_query.transform = Transform2D(0.0, primary_end)
+		shape_query.motion = motion * (1.0 - safe_fraction)
 		var rest_info: Dictionary = space_state.get_rest_info(shape_query)
 		var hit_normal: Vector2 = rest_info.get("normal", Vector2.ZERO) as Vector2
 		var reflected_direction: Vector2 = primary_direction.bounce(hit_normal).normalized()

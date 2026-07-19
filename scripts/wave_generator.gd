@@ -6,21 +6,34 @@ var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 func reset(seed: int) -> void:
 	_random.seed = seed
 
-func generate_bottom_row(layout: BoardLayout, config: GameConfig, safe_turns: int) -> Array[WaveEntry]:
+func generate_bottom_row(layout: BoardLayout, config: GameConfig, next_ball_count: int) -> Array[WaveEntry]:
 	var columns: Array[int] = []
 	for column: int in layout.columns:
 		columns.append(column)
-	for index: int in columns.size():
-		var swap_index: int = _random.randi_range(index, columns.size() - 1)
-		var temporary_column: int = columns[index]
-		columns[index] = columns[swap_index]
-		columns[swap_index] = temporary_column
+	_shuffle_values(columns)
 	var max_blocks: int = mini(config.wave_max_blocks, layout.columns)
 	var min_blocks: int = mini(config.wave_min_blocks, max_blocks)
 	var block_count: int = _random.randi_range(min_blocks, max_blocks)
-	var minimum_health: int = mini(config.wave_initial_health + safe_turns * config.wave_health_growth_per_turn, config.wave_max_health)
-	var maximum_health: int = mini(minimum_health + config.wave_health_variance, config.wave_max_health)
+	var minimum_multiplier: int = mini(config.wave_health_min_ball_multiplier, config.wave_health_max_ball_multiplier)
+	var maximum_multiplier: int = maxi(config.wave_health_min_ball_multiplier, config.wave_health_max_ball_multiplier)
+	var minimum_health: int = maxi(1, next_ball_count * minimum_multiplier)
+	var maximum_health: int = maxi(minimum_health, next_ball_count * maximum_multiplier)
+	var health_values: Array[int] = []
+	for health_value: int in range(minimum_health, maximum_health + 1):
+		health_values.append(health_value)
+	_shuffle_values(health_values)
 	var entries: Array[WaveEntry] = []
 	for index: int in block_count:
-		entries.append(WaveEntry.new(columns[index], _random.randi_range(minimum_health, maximum_health)))
+		var shape_type: int = _random.randi_range(0, Obstacle.Shape.size() - 1)
+		var rotation_degrees: float = _random.randf_range(0.0, 360.0)
+		# 先遍历打散后的可用数字，数字范围不足一整行时才循环复用。
+		var health: int = health_values[index % health_values.size()]
+		entries.append(WaveEntry.new(columns[index], health, shape_type, rotation_degrees))
 	return entries
+
+func _shuffle_values(values: Array[int]) -> void:
+	for index: int in values.size():
+		var swap_index: int = _random.randi_range(index, values.size() - 1)
+		var temporary_value: int = values[index]
+		values[index] = values[swap_index]
+		values[swap_index] = temporary_value

@@ -1,14 +1,18 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene format=3 uid="uid://bcjj7jtucplht"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://bioaegmaga2ke" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Resource" path="res://resources/game_config.tres" id="2_config"]
-[ext_resource type="Script" path="res://scripts/arena_renderer.gd" id="3_arena"]
-[ext_resource type="Script" path="res://scripts/launcher.gd" id="4_launcher"]
-[ext_resource type="Script" path="res://scripts/game_controller.gd" id="5_controller"]
+[ext_resource type="Script" uid="uid://51myuwo3v3nm" path="res://scripts/arena_renderer.gd" id="3_arena"]
+[ext_resource type="Script" uid="uid://dhy1alk38bo6m" path="res://scripts/launcher.gd" id="4_launcher"]
+[ext_resource type="Script" uid="uid://ctyuleaju5pbq" path="res://scripts/game_controller.gd" id="5_controller"]
 [ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="6_ball"]
 [ext_resource type="PackedScene" path="res://scenes/obstacle.tscn" id="7_obstacle"]
-[ext_resource type="Script" path="res://scripts/ball_manager.gd" id="8_ball_manager"]
-[ext_resource type="Script" path="res://scripts/board_controller.gd" id="9_board_controller"]
+[ext_resource type="Script" uid="uid://eh2h1vnw5ug2" path="res://scripts/ball_manager.gd" id="8_ball_manager"]
+[ext_resource type="Script" uid="uid://btigtwf54u6m" path="res://scripts/board_controller.gd" id="9_board_controller"]
+[ext_resource type="Script" uid="uid://cioaa1an7jsm2" path="res://scripts/challenge_wave_clock.gd" id="10_challenge_clock"]
+[ext_resource type="Resource" path="res://resources/modes/classic_mode.tres" id="11_classic_mode"]
+[ext_resource type="Resource" path="res://resources/modes/challenge_mode.tres" id="12_challenge_mode"]
+[ext_resource type="Script" uid="uid://clijml8mp0s1r" path="res://scripts/mode_selection.gd" id="13_mode_selection"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -34,69 +38,74 @@ b = Vector2(1008, 240)
 a = Vector2(588, 400)
 b = Vector2(588, 420)
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=916806592]
 script = ExtResource("1_main")
 
-[node name="ArenaRenderer" type="Node2D" parent="."]
+[node name="ArenaRenderer" type="Node2D" parent="." unique_id=346172408]
 script = ExtResource("3_arena")
 config = ExtResource("2_config")
 
-[node name="Boundaries" type="StaticBody2D" parent="."]
-collision_layer = 1
-collision_mask = 1
+[node name="Boundaries" type="StaticBody2D" parent="." unique_id=360866802]
 
-[node name="LeftWall" type="CollisionShape2D" parent="Boundaries"]
+[node name="LeftWall" type="CollisionShape2D" parent="Boundaries" unique_id=1575205266]
 shape = SubResource("SegmentShape2D_left_wall")
 
-[node name="RightWall" type="CollisionShape2D" parent="Boundaries"]
+[node name="RightWall" type="CollisionShape2D" parent="Boundaries" unique_id=742235898]
 shape = SubResource("SegmentShape2D_right_wall")
 
-[node name="LeftRoof" type="CollisionShape2D" parent="Boundaries"]
+[node name="LeftRoof" type="CollisionShape2D" parent="Boundaries" unique_id=954117082]
 shape = SubResource("SegmentShape2D_left_roof")
 
-[node name="LeftRoofDrop" type="CollisionShape2D" parent="Boundaries"]
+[node name="LeftRoofDrop" type="CollisionShape2D" parent="Boundaries" unique_id=1875959447]
 shape = SubResource("SegmentShape2D_left_roof_drop")
 
-[node name="RightRoof" type="CollisionShape2D" parent="Boundaries"]
+[node name="RightRoof" type="CollisionShape2D" parent="Boundaries" unique_id=1286322256]
 shape = SubResource("SegmentShape2D_right_roof")
 
-[node name="RightRoofDrop" type="CollisionShape2D" parent="Boundaries"]
+[node name="RightRoofDrop" type="CollisionShape2D" parent="Boundaries" unique_id=1937026830]
 shape = SubResource("SegmentShape2D_right_roof_drop")
 
-[node name="ObstacleLayer" type="Node2D" parent="."]
+[node name="ObstacleLayer" type="Node2D" parent="." unique_id=801328402]
 
-[node name="BallLayer" type="Node2D" parent="."]
+[node name="BallLayer" type="Node2D" parent="." unique_id=895197381]
 
-[node name="BallManager" type="Node" parent="." node_paths=PackedStringArray("ball_layer")]
+[node name="BallManager" type="Node" parent="." unique_id=1055952831 node_paths=PackedStringArray("ball_layer")]
 unique_name_in_owner = true
 script = ExtResource("8_ball_manager")
 config = ExtResource("2_config")
 ball_scene = ExtResource("6_ball")
 ball_layer = NodePath("../BallLayer")
 
-[node name="BoardController" type="Node" parent="." node_paths=PackedStringArray("obstacle_layer")]
+[node name="BoardController" type="Node" parent="." unique_id=1063130103 node_paths=PackedStringArray("obstacle_layer")]
 unique_name_in_owner = true
 script = ExtResource("9_board_controller")
 config = ExtResource("2_config")
 obstacle_scene = ExtResource("7_obstacle")
 obstacle_layer = NodePath("../ObstacleLayer")
 
-[node name="Launcher" type="Node2D" parent="."]
+[node name="ChallengeWaveClock" type="Timer" parent="." unique_id=1025994308]
+unique_name_in_owner = true
+script = ExtResource("10_challenge_clock")
+
+[node name="Launcher" type="Node2D" parent="." unique_id=1828613783]
 unique_name_in_owner = true
 position = Vector2(540, 450)
 script = ExtResource("4_launcher")
 config = ExtResource("2_config")
 
-[node name="GameController" type="Node" parent="." node_paths=PackedStringArray("ball_manager", "board_controller")]
+[node name="GameController" type="Node" parent="." unique_id=1998273937 node_paths=PackedStringArray("ball_manager", "board_controller", "challenge_wave_clock")]
 unique_name_in_owner = true
 script = ExtResource("5_controller")
 config = ExtResource("2_config")
 ball_manager = NodePath("../BallManager")
 board_controller = NodePath("../BoardController")
+challenge_wave_clock = NodePath("../ChallengeWaveClock")
+classic_mode = ExtResource("11_classic_mode")
+challenge_mode = ExtResource("12_challenge_mode")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1052090290]
 
-[node name="ScoreLabel" type="Label" parent="CanvasLayer"]
+[node name="ScoreLabel" type="Label" parent="CanvasLayer" unique_id=1947393844]
 unique_name_in_owner = true
 offset_left = 96.0
 offset_top = 342.0
@@ -106,7 +115,7 @@ theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
 theme_override_font_sizes/font_size = 38
 text = "Score: 0"
 
-[node name="TimeLabel" type="Label" parent="CanvasLayer"]
+[node name="TimeLabel" type="Label" parent="CanvasLayer" unique_id=1864681749]
 unique_name_in_owner = true
 offset_left = 640.0
 offset_top = 342.0
@@ -116,3 +125,95 @@ theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
 theme_override_font_sizes/font_size = 38
 text = "Time: 00:00"
 horizontal_alignment = 2
+
+[node name="WaveLabel" type="Label" parent="CanvasLayer" unique_id=1690422703]
+unique_name_in_owner = true
+offset_left = 672.0
+offset_top = 405.0
+offset_right = 984.0
+offset_bottom = 445.0
+theme_override_colors/font_color = Color(0.32, 0.88, 0.83, 1)
+theme_override_font_sizes/font_size = 24
+text = "Wave: 10s"
+horizontal_alignment = 2
+
+[node name="ModeSelection" type="Control" parent="CanvasLayer" unique_id=140184860]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("13_mode_selection")
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer/ModeSelection" unique_id=1109178367]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 560.0
+offset_right = 960.0
+offset_bottom = 700.0
+theme_override_colors/font_color = Color(0.73, 0.34, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.02, 0.02, 0.08, 0.9)
+theme_override_constants/shadow_offset_x = 5
+theme_override_constants/shadow_offset_y = 8
+theme_override_font_sizes/font_size = 104
+text = "弹球大作战"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CanvasLayer/ModeSelection" unique_id=1800682839]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 730.0
+offset_right = 960.0
+offset_bottom = 790.0
+theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_font_sizes/font_size = 34
+text = "选择模式开始游戏"
+horizontal_alignment = 1
+
+[node name="ClassicHint" type="Label" parent="CanvasLayer/ModeSelection" unique_id=186229662]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 1010.0
+offset_right = 500.0
+offset_bottom = 1100.0
+theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_font_sizes/font_size = 30
+text = "经典模式
+球回收后推进方块"
+horizontal_alignment = 1
+
+[node name="ChallengeHint" type="Label" parent="CanvasLayer/ModeSelection" unique_id=1194684621]
+layout_mode = 0
+offset_left = 580.0
+offset_top = 1010.0
+offset_right = 970.0
+offset_bottom = 1100.0
+theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_font_sizes/font_size = 30
+text = "挑战模式
+每 10 秒推进方块"
+horizontal_alignment = 1
+
+[node name="ClassicModeButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=1287586838]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 84.0
+offset_top = 1160.0
+offset_right = 516.0
+offset_bottom = 1290.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 50
+text = "经典模式"
+
+[node name="ChallengeModeButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=568548649]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 564.0
+offset_top = 1160.0
+offset_right = 996.0
+offset_bottom = 1290.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 50
+text = "挑战模式"

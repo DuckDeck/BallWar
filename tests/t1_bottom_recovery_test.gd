@@ -9,6 +9,7 @@ func _initialize() -> void:
 	var main: Main = MAIN_SCENE.instantiate() as Main
 	root.add_child(main)
 	await process_frame
+	main.start_game_by_mode_id(GameModeDefinition.Mode.CLASSIC)
 	var controller: GameController = main.get_node("GameController") as GameController
 	var ball_layer: Node2D = main.get_node("BallLayer") as Node2D
 	if not await _verify_bottom_recovery(controller.config, ball_layer, -1.0):

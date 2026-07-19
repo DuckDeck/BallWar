@@ -11,11 +11,12 @@ func _initialize() -> void:
 	var manager: BallManager = main.get_node("BallManager") as BallManager
 	var board: BoardController = main.get_node("BoardController") as BoardController
 	var launcher: Launcher = main.get_node("Launcher") as Launcher
+	controller.config.initial_ball_count = 10
+	controller.config.ball_launch_interval_seconds = 0.01
+	main.start_game_by_mode_id(GameModeDefinition.Mode.CLASSIC)
 	assert(board.get_obstacle_count() >= 1, "The board must create at least one bottom-row obstacle.")
 	assert(controller.config.launcher_position == Vector2(540.0, 450.0), "The launch origin must sit one ball diameter below the roof exit.")
 	assert(launcher.global_position == controller.config.launcher_position, "The visual launcher and physics origin must stay aligned.")
-	controller.config.initial_ball_count = 10
-	controller.config.ball_launch_interval_seconds = 0.01
 	controller.request_launch(Vector2.DOWN)
 	var active_balls: Array[Ball] = manager.get_active_balls(1)
 	assert(active_balls.size() == 1, "Only the first ball may launch immediately.")
