@@ -38,16 +38,20 @@ func _initialize() -> void:
 	var gravity_probe: Ball = BALL_SCENE.instantiate() as Ball
 	gravity_probe.config = controller.config
 	ball_layer.add_child(gravity_probe)
-	gravity_probe.global_position = Vector2(540.0, 800.0)
-	gravity_probe.launch(Vector2.UP)
-	var initial_upward_velocity: float = gravity_probe.velocity.y
-	var gravity_applied: bool = false
+	gravity_probe.global_position = Vector2(140.0, 800.0)
+	gravity_probe.launch(Vector2.LEFT)
+	var gravity_enabled: bool = false
 	var gravity_frames: int = 0
-	while not gravity_applied and gravity_frames < 5:
+	while not gravity_enabled and gravity_frames < 10:
 		await physics_frame
-		gravity_applied = gravity_probe.velocity.y > initial_upward_velocity
+		gravity_enabled = gravity_probe.runtime_state.is_gravity_enabled
+		if not gravity_enabled:
+			assert(is_zero_approx(gravity_probe.velocity.y), "Before its first collision, a ball must follow the exact aim direction without gravity.")
 		gravity_frames += 1
-	assert(gravity_applied, "Gravity must reduce upward speed every physics frame.")
+	assert(gravity_enabled, "A wall collision must enable gravity for that ball.")
+	var velocity_after_first_collision: float = gravity_probe.velocity.y
+	await physics_frame
+	assert(gravity_probe.velocity.y > velocity_after_first_collision, "Gravity must affect the ball starting on the physics frame after its first collision.")
 	var trail: Line2D = gravity_probe.get_node_or_null("MotionTrail") as Line2D
 	if trail == null:
 		push_error("An active ball must create a Line2D trail renderer.")
@@ -65,6 +69,6 @@ func _initialize() -> void:
 	while gravity_probe.velocity.y <= 0.0 and gravity_frames < MAX_GRAVITY_FRAMES:
 		await physics_frame
 		gravity_frames += 1
-	assert(gravity_probe.velocity.y > 0.0, "Gravity must turn an upward ball into a falling ball.")
-	print("T1 gravity test passed: upward ball slowed down and fell back.")
+	assert(gravity_probe.velocity.y > 0.0, "Gravity must pull a post-collision ball downward.")
+	print("T1 gravity test passed: first-flight aim is straight and post-collision gravity is active.")
 	quit(0)

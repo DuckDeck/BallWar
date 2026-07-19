@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://scripts/game_controller.gd" id="5_controller"]
 [ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="6_ball"]
 [ext_resource type="PackedScene" path="res://scenes/obstacle.tscn" id="7_obstacle"]
+[ext_resource type="Script" path="res://scripts/ball_manager.gd" id="8_ball_manager"]
+[ext_resource type="Script" path="res://scripts/board_controller.gd" id="9_board_controller"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -65,20 +67,32 @@ shape = SubResource("SegmentShape2D_right_roof_drop")
 
 [node name="BallLayer" type="Node2D" parent="."]
 
+[node name="BallManager" type="Node" parent="." node_paths=PackedStringArray("ball_layer")]
+unique_name_in_owner = true
+script = ExtResource("8_ball_manager")
+config = ExtResource("2_config")
+ball_scene = ExtResource("6_ball")
+ball_layer = NodePath("../BallLayer")
+
+[node name="BoardController" type="Node" parent="." node_paths=PackedStringArray("obstacle_layer")]
+unique_name_in_owner = true
+script = ExtResource("9_board_controller")
+config = ExtResource("2_config")
+obstacle_scene = ExtResource("7_obstacle")
+obstacle_layer = NodePath("../ObstacleLayer")
+
 [node name="Launcher" type="Node2D" parent="."]
 unique_name_in_owner = true
-position = Vector2(540, 410)
+position = Vector2(540, 450)
 script = ExtResource("4_launcher")
 config = ExtResource("2_config")
 
-[node name="GameController" type="Node" parent="." node_paths=PackedStringArray("ball_layer", "obstacle_layer")]
+[node name="GameController" type="Node" parent="." node_paths=PackedStringArray("ball_manager", "board_controller")]
 unique_name_in_owner = true
 script = ExtResource("5_controller")
 config = ExtResource("2_config")
-ball_scene = ExtResource("6_ball")
-obstacle_scene = ExtResource("7_obstacle")
-ball_layer = NodePath("../BallLayer")
-obstacle_layer = NodePath("../ObstacleLayer")
+ball_manager = NodePath("../BallManager")
+board_controller = NodePath("../BoardController")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
@@ -91,3 +105,14 @@ offset_bottom = 402.0
 theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
 theme_override_font_sizes/font_size = 38
 text = "Score: 0"
+
+[node name="TimeLabel" type="Label" parent="CanvasLayer"]
+unique_name_in_owner = true
+offset_left = 640.0
+offset_top = 342.0
+offset_right = 984.0
+offset_bottom = 402.0
+theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
+theme_override_font_sizes/font_size = 38
+text = "Time: 00:00"
+horizontal_alignment = 2

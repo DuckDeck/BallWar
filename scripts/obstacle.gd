@@ -6,30 +6,43 @@ signal destroyed(points: int)
 
 @export var config: GameConfig
 
+var board_cell: Vector2i = Vector2i(-1, -1)
+var obstacle_id: int = -1
 var _health: int = 0
+var _points: int = 0
 var _is_destroyed: bool = false
 
 func _ready() -> void:
 	assert(config != null, "Obstacle requires a GameConfig resource.")
 	if _health == 0:
-		configure(config.initial_obstacle_health)
+		configure(config.initial_obstacle_health, config.score_per_obstacle)
 
-func configure(initial_health: int) -> void:
+func configure(initial_health: int, points: int) -> void:
 	_health = max(1, initial_health)
+	_points = points
 	_is_destroyed = false
 	queue_redraw()
 
-func take_hit() -> void:
+func receive_hit(context: HitContext) -> HitResult:
+	var result: HitResult = HitResult.new()
+	result.bounce_multiplier = config.obstacle_bounce_restitution
 	if _is_destroyed:
-		return
-	_health -= 1
-	damaged.emit(_health)
+		return result
+	var applied_damage: int = max(0, context.damage)
+	if applied_damage == 0:
+		return result
+	_health -= applied_damage
+	result.was_applied = true
+	damaged.emit(maxi(_health, 0))
 	if _health <= 0:
 		_is_destroyed = true
-		destroyed.emit(config.score_per_obstacle)
+		result.was_destroyed = true
+		result.points_awarded = _points
+		destroyed.emit(_points)
 		queue_free()
 	else:
 		queue_redraw()
+	return result
 
 func _draw() -> void:
 	var points: PackedVector2Array = PackedVector2Array([
