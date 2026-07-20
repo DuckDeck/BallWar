@@ -12,6 +12,8 @@ func _initialize() -> void:
 	config.wave_max_blocks = 6
 	config.wave_health_min_ball_multiplier = 1
 	config.wave_health_max_ball_multiplier = 2
+	config.add_ball_reward_probability = 0.0
+	config.enlarge_ball_reward_probability = 0.0
 	var layout: BoardLayout = BoardLayout.new()
 	layout.configure(config)
 	var generator: WaveGenerator = WaveGenerator.new()

@@ -4,6 +4,7 @@ extends SceneTree
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 const BALL_SCENE: PackedScene = preload("res://scenes/ball.tscn")
 const MAX_PHYSICS_FRAMES_PER_TURN: int = 600
+const MAX_LAUNCHER_READY_FRAMES: int = 180
 
 var _completed_rounds: int = 0
 var _score: int = 0
@@ -42,6 +43,9 @@ func _initialize() -> void:
 	controller.config.ball_gravity = 1400.0
 	controller.config.ball_max_lifetime = 1.2
 	for turn_index: int in 3:
+		if not await _wait_for_launcher_ready(launcher):
+			quit(1)
+			return
 		_simulate_playfield_launch(launcher, Vector2(180.0, 180.0))
 		var target_rounds: int = turn_index + 1
 		var frames_waited: int = 0
@@ -79,6 +83,13 @@ func _simulate_playfield_launch(launcher: Launcher, target_offset: Vector2) -> v
 	release_event.pressed = false
 	release_event.position = press_event.position
 	launcher._unhandled_input(release_event)
+
+func _wait_for_launcher_ready(launcher: Launcher) -> bool:
+	var frame_count: int = 0
+	while not launcher.is_launch_ready() and frame_count < MAX_LAUNCHER_READY_FRAMES:
+		await physics_frame
+		frame_count += 1
+	return launcher.is_launch_ready()
 
 func _on_state_changed(state: int) -> void:
 	if state == GameController.State.READY:

@@ -6,10 +6,13 @@ var pending_definitions: Array[BallDefinition] = []
 var active_balls: Dictionary = {}
 var origin: Vector2 = Vector2.ZERO
 var launch_direction: Vector2 = Vector2.DOWN
+var recovery_terminal_position: Vector2 = Vector2.ZERO
 var seconds_until_next_launch: float = 0.0
+var awaiting_launcher_slot: bool = false
 
-func _init(batch: BallBatch, batch_origin: Vector2, direction: Vector2) -> void:
+func _init(batch: BallBatch, batch_origin: Vector2, direction: Vector2, recovery_target: Vector2) -> void:
 	batch_id = batch.id
 	pending_definitions.append_array(batch.definitions)
 	origin = batch_origin
 	launch_direction = direction.normalized()
+	recovery_terminal_position = recovery_target

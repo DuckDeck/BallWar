@@ -16,12 +16,16 @@ func _ready() -> void:
 	_game_controller.score_changed.connect(_on_score_changed)
 	_game_controller.state_changed.connect(_on_state_changed)
 	_game_controller.launcher_launchability_changed.connect(_on_launcher_launchability_changed)
+	_game_controller.launcher_presentation_changed.connect(_on_launcher_presentation_changed)
+	_game_controller.launcher_next_ball_release_requested.connect(_on_launcher_next_ball_release_requested)
+	_game_controller.classic_launcher_recovery_received.connect(_on_classic_launcher_recovery_received)
 	_game_controller.elapsed_time_changed.connect(_on_elapsed_time_changed)
 	_game_controller.launcher_preview_changed.connect(_on_launcher_preview_changed)
 	_game_controller.game_mode_changed.connect(_on_game_mode_changed)
 	_game_controller.challenge_wave_remaining_changed.connect(_on_challenge_wave_remaining_changed)
 	_mode_selection.mode_selected.connect(_on_mode_selected)
 	_launcher.set_waiting_ball_definitions(_game_controller.get_launcher_preview_definitions())
+	_launcher.next_ball_release_ready.connect(_on_launcher_next_ball_release_ready)
 	_launcher.set_launch_ready(false)
 	_score_label.text = "Score: 0"
 	_time_label.text = _format_elapsed_time(_game_controller.get_elapsed_seconds())
@@ -44,6 +48,18 @@ func _on_state_changed(state: int) -> void:
 
 func _on_launcher_launchability_changed(is_ready: bool) -> void:
 	_launcher.set_launch_ready(is_ready)
+
+func _on_launcher_presentation_changed(presentation: int) -> void:
+	_launcher.set_presentation(presentation)
+
+func _on_launcher_next_ball_release_requested(batch_id: int) -> void:
+	_launcher.request_next_ball_release(batch_id)
+
+func _on_launcher_next_ball_release_ready(batch_id: int, definition: BallDefinition) -> void:
+	_game_controller.confirm_launcher_next_ball_release(batch_id, definition)
+
+func _on_classic_launcher_recovery_received(definition: BallDefinition, recovery_direction: float) -> void:
+	_launcher.set_classic_recovery_direction(definition, recovery_direction)
 
 func _on_elapsed_time_changed(elapsed_seconds: int) -> void:
 	_time_label.text = _format_elapsed_time(elapsed_seconds)

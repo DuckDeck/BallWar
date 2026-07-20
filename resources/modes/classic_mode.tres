@@ -1,11 +1,6 @@
-[gd_resource type="Resource" script_class="GameModeDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="GameModeDefinition" format=3 uid="uid://bkqwyvoi8qqtb"]
 
-[ext_resource type="Script" path="res://scripts/game_mode_definition.gd" id="1_game_mode"]
+[ext_resource type="Script" uid="uid://tjfsvuyjva51" path="res://scripts/game_mode_definition.gd" id="1_game_mode"]
 
 [resource]
 script = ExtResource("1_game_mode")
-mode = 0
-display_name = "经典模式"
-timed_wave_interval_seconds = 10.0
-temporary_ball_gain_per_timed_wave = 0
-timed_wave_scroll_duration_seconds = 0.4

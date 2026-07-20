@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bcjj7jtucplht"]
 
 [ext_resource type="Script" uid="uid://bioaegmaga2ke" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Resource" path="res://resources/game_config.tres" id="2_config"]
+[ext_resource type="Resource" uid="uid://cnm52dgkbwd4j" path="res://resources/game_config.tres" id="2_config"]
 [ext_resource type="Script" uid="uid://51myuwo3v3nm" path="res://scripts/arena_renderer.gd" id="3_arena"]
 [ext_resource type="Script" uid="uid://dhy1alk38bo6m" path="res://scripts/launcher.gd" id="4_launcher"]
 [ext_resource type="Script" uid="uid://ctyuleaju5pbq" path="res://scripts/game_controller.gd" id="5_controller"]
@@ -13,7 +13,8 @@
 [ext_resource type="Resource" path="res://resources/modes/classic_mode.tres" id="11_classic_mode"]
 [ext_resource type="Resource" path="res://resources/modes/challenge_mode.tres" id="12_challenge_mode"]
 [ext_resource type="Script" uid="uid://clijml8mp0s1r" path="res://scripts/mode_selection.gd" id="13_mode_selection"]
-[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSCMedium-4.ttf" id="14_menu_font"]
+[ext_resource type="FontFile" uid="uid://cnkwk221xk5he" path="res://assets/fonts/NotoSansSCMedium-4.ttf" id="14_menu_font"]
+[ext_resource type="PackedScene" path="res://scenes/reward_block.tscn" id="15_reward"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -82,6 +83,7 @@ unique_name_in_owner = true
 script = ExtResource("9_board_controller")
 config = ExtResource("2_config")
 obstacle_scene = ExtResource("7_obstacle")
+reward_scene = ExtResource("15_reward")
 obstacle_layer = NodePath("../ObstacleLayer")
 
 [node name="ChallengeWaveClock" type="Timer" parent="." unique_id=1025994308]

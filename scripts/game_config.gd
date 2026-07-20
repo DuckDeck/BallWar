@@ -17,7 +17,6 @@ extends Resource
 @export_group("Ball Batch")
 @export_range(1, 10, 1) var initial_ball_count: int = 1
 @export_range(1, 30, 1) var maximum_ball_count: int = 10
-@export_range(1, 10, 1) var safe_turns_per_ball_growth: int = 1
 @export_range(0.0, 30.0, 0.5) var launch_spread_degrees: float = 0.0
 @export_range(0.02, 0.50, 0.01, "suffix:s") var ball_launch_interval_seconds: float = 0.10
 @export var ball_palette: PackedColorArray = PackedColorArray([
@@ -25,6 +24,13 @@ extends Resource
 	Color("ff5bbd"), Color("b4ff58"), Color("ffd34f"), Color("7f9cff"),
 	Color("ff705d"), Color("68f0c1"),
 ])
+
+@export_group("Heavy Ball")
+@export_range(0.0, 1.0, 0.01) var heavy_ball_spawn_probability: float = 0.20
+@export_range(1.0, 2.0, 0.05) var heavy_ball_radius_multiplier: float = 1.30
+@export_range(1.0, 3.0, 0.05) var heavy_ball_gravity_multiplier: float = 1.30
+@export_range(0.0, 1.0, 0.01) var heavy_ball_double_damage_probability: float = 0.15
+@export var heavy_ball_random_seed: int = 20260720
 
 @export_group("Ball Trail")
 # 拖尾保留的历史时长（秒）：越大尾巴越长；建议保持在 0.15~0.25 秒以兼顾清晰度与性能。
@@ -35,6 +41,22 @@ extends Resource
 @export_group("Launcher")
 @export var launcher_position: Vector2 = Vector2(540.0, 450.0)
 @export var launcher_radius: float = 20.0
+
+func get_classic_launcher_staging_position() -> Vector2:
+	return Vector2(launcher_position.x, roof_apex_y - ball_radius * 2.8)
+
+@export_group("Launcher Preview Physics")
+@export_range(800.0, 6000.0, 100.0, "suffix:px/s²") var launcher_preview_gravity: float = 3200.0
+@export_range(80.0, 1000.0, 10.0, "suffix:px/s") var launcher_preview_return_toss_speed: float = 680.0
+@export_range(40.0, 400.0, 10.0, "suffix:px/s") var launcher_preview_return_inward_speed: float = 170.0
+@export_range(80.0, 1000.0, 10.0, "suffix:px/s²") var launcher_preview_velocity_damping: float = 460.0
+@export_range(4.0, 120.0, 2.0, "suffix:px/s") var launcher_preview_rest_speed: float = 26.0
+@export_range(20.0, 240.0, 5.0, "suffix:px/s") var launcher_preview_collision_wake_speed: float = 70.0
+@export_range(0.10, 2.00, 0.05, "suffix:s") var launcher_preview_stack_lock_delay_seconds: float = 0.55
+@export_range(0.0, 0.5, 0.01) var launcher_preview_restitution: float = 0.06
+@export_range(0.0, 1.0, 0.01) var launcher_preview_floor_friction: float = 0.92
+@export_range(0.0, 1.0, 0.01) var launcher_preview_stacked_friction: float = 0.58
+@export_range(0.3, 1.2, 0.05) var launcher_preview_slope: float = 0.68
 
 @export_group("Aim Guide")
 @export_range(200.0, 2400.0, 20.0) var aim_guide_max_length: float = 1800.0
@@ -87,3 +109,7 @@ func get_bottom_trough_y(world_x: float) -> float:
 @export_range(1, 10, 1) var wave_health_min_ball_multiplier: int = 1
 # 新障碍数字范围 = 下一回合可控球数 × 此最大倍率。
 @export_range(1, 10, 1) var wave_health_max_ball_multiplier: int = 2
+
+@export_group("Reward Blocks")
+@export_range(0.0, 1.0, 0.01) var add_ball_reward_probability: float = 0.09
+@export_range(0.0, 1.0, 0.01) var enlarge_ball_reward_probability: float = 0.05

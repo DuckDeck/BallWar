@@ -3,7 +3,8 @@ extends Node
 
 signal batch_finished(batch_id: int)
 signal launch_queue_changed(queued_definitions: Array[BallDefinition])
-signal ball_recovered(definition: BallDefinition)
+signal ball_recovered(definition: BallDefinition, recovery_direction: float)
+signal next_ball_release_requested(batch_id: int)
 
 @export var config: GameConfig
 @export var ball_scene: PackedScene
@@ -16,10 +17,10 @@ func _ready() -> void:
 	assert(ball_scene != null, "BallManager requires a Ball scene.")
 	assert(ball_layer != null, "BallManager requires a Ball layer.")
 
-func launch_batch(batch: BallBatch, origin: Vector2, direction: Vector2) -> void:
+func launch_batch(batch: BallBatch, origin: Vector2, direction: Vector2, recovery_terminal_position: Vector2) -> void:
 	assert(not batch.definitions.is_empty(), "A BallBatch must contain at least one ball definition.")
 	assert(not _sequences_by_batch.has(batch.id), "A batch ID must be unique while it is active.")
-	var sequence: BallLaunchSequence = BallLaunchSequence.new(batch, origin, direction)
+	var sequence: BallLaunchSequence = BallLaunchSequence.new(batch, origin, direction, recovery_terminal_position)
 	_sequences_by_batch[batch.id] = sequence
 	_launch_next_ball(sequence)
 
@@ -32,8 +33,16 @@ func _process(delta: float) -> void:
 		if sequence == null or sequence.pending_definitions.is_empty():
 			continue
 		sequence.seconds_until_next_launch -= delta
-		if sequence.seconds_until_next_launch <= 0.0:
-			_launch_next_ball(sequence)
+		if sequence.seconds_until_next_launch <= 0.0 and not sequence.awaiting_launcher_slot:
+			sequence.awaiting_launcher_slot = true
+			next_ball_release_requested.emit(sequence.batch_id)
+
+func release_next_ball(batch_id: int, preferred_definition: BallDefinition = null) -> void:
+	var sequence: BallLaunchSequence = _get_sequence(batch_id)
+	if sequence == null or not sequence.awaiting_launcher_slot:
+		return
+	sequence.awaiting_launcher_slot = false
+	_launch_next_ball(sequence, preferred_definition)
 
 func get_active_ball_count() -> int:
 	var count: int = 0
@@ -67,22 +76,45 @@ func begin_board_shift(offset: Vector2, duration_seconds: float) -> void:
 			if is_instance_valid(ball):
 				ball.begin_board_shift(offset, duration_seconds)
 
-func _launch_next_ball(sequence: BallLaunchSequence) -> void:
+func spawn_bonus_ball(source_ball: Ball, definition: BallDefinition, spawn_position: Vector2) -> bool:
+	if source_ball == null or definition == null:
+		return false
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		if not sequence.active_balls.has(source_ball.get_instance_id()):
+			continue
+		var bonus_ball: Ball = _create_active_ball(sequence, definition, spawn_position)
+		bonus_ball.launch_bonus_drop()
+		return true
+	return false
+
+func _launch_next_ball(sequence: BallLaunchSequence, preferred_definition: BallDefinition = null) -> void:
 	if sequence.pending_definitions.is_empty():
 		_maybe_finish_batch(sequence)
 		return
-	var definition: BallDefinition = sequence.pending_definitions.pop_front()
+	var definition: BallDefinition = _take_next_definition(sequence, preferred_definition)
+	var ball: Ball = _create_active_ball(sequence, definition, sequence.origin)
+	ball.launch(sequence.launch_direction)
+	sequence.seconds_until_next_launch = config.ball_launch_interval_seconds
+	launch_queue_changed.emit(sequence.pending_definitions)
+
+func _create_active_ball(sequence: BallLaunchSequence, definition: BallDefinition, position: Vector2) -> Ball:
 	var ball: Ball = ball_scene.instantiate() as Ball
 	ball.config = config
 	ball.definition = definition
 	ball.runtime_state = BallRuntimeState.new()
+	ball.set_recovery_terminal_position(sequence.recovery_terminal_position)
 	ball.recovered.connect(_on_ball_recovered.bind(sequence.batch_id, ball))
 	ball_layer.add_child(ball)
-	ball.global_position = sequence.origin
+	ball.global_position = position
 	sequence.active_balls[ball.get_instance_id()] = ball
-	ball.launch(sequence.launch_direction)
-	sequence.seconds_until_next_launch = config.ball_launch_interval_seconds
-	launch_queue_changed.emit(sequence.pending_definitions)
+	return ball
+
+func _take_next_definition(sequence: BallLaunchSequence, preferred_definition: BallDefinition) -> BallDefinition:
+	if preferred_definition != null:
+		for index: int in sequence.pending_definitions.size():
+			if sequence.pending_definitions[index].visual_color == preferred_definition.visual_color:
+				return sequence.pending_definitions.pop_at(index)
+	return sequence.pending_definitions.pop_front()
 
 func _get_sequence(batch_id: int) -> BallLaunchSequence:
 	return _sequences_by_batch.get(batch_id, null) as BallLaunchSequence
@@ -92,7 +124,7 @@ func _on_ball_recovered(_reason: StringName, batch_id: int, ball: Ball) -> void:
 	if sequence == null or not sequence.active_balls.has(ball.get_instance_id()):
 		return
 	sequence.active_balls.erase(ball.get_instance_id())
-	ball_recovered.emit(ball.definition)
+	ball_recovered.emit(ball.definition, ball.get_recovery_direction())
 	if is_instance_valid(ball):
 		ball.queue_free()
 	_maybe_finish_batch(sequence)

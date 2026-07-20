@@ -28,8 +28,16 @@ func generate_bottom_row(layout: BoardLayout, config: GameConfig, next_ball_coun
 		var rotation_degrees: float = _random.randf_range(0.0, 360.0)
 		# 先遍历打散后的可用数字，数字范围不足一整行时才循环复用。
 		var health: int = health_values[index % health_values.size()]
-		entries.append(WaveEntry.new(columns[index], health, shape_type, rotation_degrees))
+		entries.append(WaveEntry.new(columns[index], health, shape_type, rotation_degrees, _roll_entry_content(config)))
 	return entries
+
+func _roll_entry_content(config: GameConfig) -> WaveEntry.Content:
+	var reward_roll: float = _random.randf()
+	if reward_roll < config.add_ball_reward_probability:
+		return WaveEntry.Content.ADD_BALL_REWARD
+	if reward_roll < config.add_ball_reward_probability + config.enlarge_ball_reward_probability:
+		return WaveEntry.Content.ENLARGE_BALL_REWARD
+	return WaveEntry.Content.OBSTACLE
 
 func _shuffle_values(values: Array[int]) -> void:
 	for index: int in values.size():

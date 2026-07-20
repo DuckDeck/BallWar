@@ -8,6 +8,9 @@ signal elapsed_time_changed(elapsed_seconds: int)
 signal game_over(final_score: int, reached_turn: int)
 signal launcher_preview_changed(definitions: Array[BallDefinition])
 signal launcher_launchability_changed(is_ready: bool)
+signal launcher_presentation_changed(presentation: int)
+signal launcher_next_ball_release_requested(batch_id: int)
+signal classic_launcher_recovery_received(definition: BallDefinition, recovery_direction: float)
 signal challenge_wave_remaining_changed(remaining_seconds: int)
 signal game_mode_changed(mode: int)
 
@@ -34,9 +37,12 @@ var _displayed_elapsed_seconds: int = 0
 var _next_batch_id: int = 1
 var _active_mode: GameModeDefinition
 var _current_ball_count: int = 1
-var _classic_safe_turns: int = 0
+var _ball_type_random: RandomNumberGenerator = RandomNumberGenerator.new()
 var _pending_timed_wave: bool = false
 var _challenge_available_definitions: Array[BallDefinition] = []
+var _classic_available_definitions: Array[BallDefinition] = []
+var _classic_queued_definitions: Array[BallDefinition] = []
+var _classic_recovered_definitions: Array[BallDefinition] = []
 
 func _ready() -> void:
 	assert(config != null, "GameController requires a GameConfig resource.")
@@ -48,7 +54,9 @@ func _ready() -> void:
 	ball_manager.batch_finished.connect(_on_batch_finished)
 	ball_manager.launch_queue_changed.connect(_on_launch_queue_changed)
 	ball_manager.ball_recovered.connect(_on_ball_recovered)
+	ball_manager.next_ball_release_requested.connect(_on_next_ball_release_requested)
 	board_controller.obstacle_destroyed.connect(_on_obstacle_destroyed)
+	board_controller.reward_collected.connect(_on_reward_collected)
 	board_controller.game_over_requested.connect(_on_board_game_over_requested)
 	board_controller.timed_wave_scroll_started.connect(_on_timed_wave_scroll_started)
 	challenge_wave_clock.wave_due.connect(_on_challenge_wave_due)
@@ -68,19 +76,29 @@ func start_game(mode: GameModeDefinition) -> void:
 		return
 	_active_mode = mode
 	_current_ball_count = config.initial_ball_count
-	_classic_safe_turns = 0
+	_ball_type_random.seed = config.heavy_ball_random_seed
 	_challenge_available_definitions.clear()
+	_classic_available_definitions.clear()
+	_classic_queued_definitions.clear()
+	_classic_recovered_definitions.clear()
 	_elapsed_time = 0.0
 	_displayed_elapsed_seconds = 0
 	board_controller.initialize_board(_current_ball_count)
 	if _active_mode.uses_timed_waves():
 		_challenge_available_definitions.append_array(_build_ball_definitions())
+	else:
+		_classic_available_definitions.append_array(_build_ball_definitions())
 	game_mode_changed.emit(_active_mode.mode)
 	if _active_mode.uses_timed_waves():
 		challenge_wave_clock.start_clock(_active_mode.timed_wave_interval_seconds)
+		_publish_launcher_presentation()
+	else:
+		launcher_presentation_changed.emit(Launcher.Presentation.CLASSIC_BLOCKED)
 	_set_state(State.READY)
 	_publish_launcher_preview()
 	_publish_launcher_launchability()
+	if not _active_mode.uses_timed_waves():
+		_publish_launcher_presentation()
 
 func _process(delta: float) -> void:
 	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:
@@ -101,18 +119,26 @@ func _physics_process(_delta: float) -> void:
 func get_elapsed_seconds() -> int:
 	return _displayed_elapsed_seconds
 
-func request_launch(direction: Vector2) -> void:
+func request_launch(direction: Vector2, preferred_definition: BallDefinition = null) -> void:
 	if direction.length_squared() <= 0.0 or not can_request_launch():
 		return
-	var definitions: Array[BallDefinition] = _build_ball_definitions()
+	var definitions: Array[BallDefinition] = []
+	var recovery_terminal_position: Vector2 = config.get_classic_launcher_staging_position()
 	if _active_mode != null and _active_mode.uses_timed_waves():
 		definitions = _challenge_available_definitions.duplicate()
 		_challenge_available_definitions.clear()
+		recovery_terminal_position = config.launcher_position
+	else:
+		definitions = _classic_available_definitions.duplicate()
+		_move_preferred_definition_to_front(definitions, preferred_definition)
+		_classic_available_definitions.clear()
+		_classic_queued_definitions = definitions.duplicate()
 	var batch: BallBatch = BallBatch.new(_next_batch_id, definitions, config.launch_spread_degrees)
 	_next_batch_id += 1
-	ball_manager.launch_batch(batch, config.launcher_position, direction)
+	ball_manager.launch_batch(batch, config.launcher_position, direction, recovery_terminal_position)
 	_set_state(State.BALLS_ACTIVE)
 	_publish_launcher_preview()
+	_publish_launcher_presentation()
 	_publish_launcher_launchability()
 
 func get_state() -> State:
@@ -126,7 +152,11 @@ func get_launcher_preview_definitions() -> Array[BallDefinition]:
 		return []
 	if _active_mode != null and _active_mode.uses_timed_waves():
 		return _challenge_available_definitions.duplicate()
-	return _build_ball_definitions()
+	if not _classic_queued_definitions.is_empty():
+		return _classic_queued_definitions.duplicate()
+	if _state == State.BALLS_ACTIVE or _state == State.RESOLVING:
+		return _classic_recovered_definitions.duplicate()
+	return _classic_available_definitions.duplicate()
 
 func get_active_mode() -> int:
 	return GameModeDefinition.Mode.CLASSIC if _active_mode == null else _active_mode.mode
@@ -139,13 +169,44 @@ func _build_ball_definitions() -> Array[BallDefinition]:
 	return definitions
 
 func _create_ball_definition(ball_index: int) -> BallDefinition:
+	var definition: BallDefinition = _create_normal_ball_definition(ball_index)
+	if _ball_type_random.randf() < config.heavy_ball_spawn_probability:
+		_configure_heavy_ball_definition(definition)
+	return definition
+
+func _create_normal_ball_definition(ball_index: int) -> BallDefinition:
 	var definition: BallDefinition = BallDefinition.new()
 	definition.visual_color = config.ball_palette[ball_index % config.ball_palette.size()]
 	return definition
 
+func _configure_heavy_ball_definition(definition: BallDefinition) -> void:
+	definition.type = BallDefinition.Type.HEAVY
+	definition.radius_multiplier = config.heavy_ball_radius_multiplier
+	definition.gravity_multiplier = config.heavy_ball_gravity_multiplier
+	definition.double_damage_probability = config.heavy_ball_double_damage_probability
+
 func _on_obstacle_destroyed(points: int) -> void:
 	_score += points
 	score_changed.emit(_score)
+
+func _on_reward_collected(reward_type: int, source_ball: Ball, reward_position: Vector2) -> void:
+	if _state == State.GAME_OVER or not is_instance_valid(source_ball):
+		return
+	if reward_type == RewardBlock.Type.ADD_BALL:
+		_spawn_persistent_bonus_ball(source_ball, _create_normal_ball_definition(_current_ball_count), reward_position)
+		return
+	if source_ball.definition.type == BallDefinition.Type.HEAVY:
+		var heavy_definition: BallDefinition = source_ball.definition.duplicate() as BallDefinition
+		_spawn_persistent_bonus_ball(source_ball, heavy_definition, reward_position)
+		return
+	source_ball.become_heavy(config.heavy_ball_radius_multiplier, config.heavy_ball_gravity_multiplier, config.heavy_ball_double_damage_probability)
+
+func _spawn_persistent_bonus_ball(source_ball: Ball, definition: BallDefinition, reward_position: Vector2) -> void:
+	if _current_ball_count >= config.maximum_ball_count:
+		return
+	if not ball_manager.spawn_bonus_ball(source_ball, definition, reward_position):
+		return
+	_current_ball_count += 1
 
 func _on_batch_finished(batch_id: int) -> void:
 	if _state != State.BALLS_ACTIVE:
@@ -160,15 +221,17 @@ func _on_batch_finished(batch_id: int) -> void:
 	call_deferred("_resolve_completed_batch", batch_id)
 
 func _resolve_completed_batch(batch_id: int) -> void:
-	var next_ball_count: int = _get_classic_next_ball_count()
-	var is_safe_turn: bool = board_controller.resolve_completed_batch(batch_id, next_ball_count)
+	var is_safe_turn: bool = board_controller.resolve_completed_batch(batch_id, _current_ball_count)
 	if not is_safe_turn:
 		return
-	_current_ball_count = next_ball_count
+	_classic_available_definitions = _classic_recovered_definitions.duplicate()
+	_classic_recovered_definitions.clear()
+	_classic_queued_definitions.clear()
 	_turn += 1
 	turn_changed.emit(_turn)
-	_publish_launcher_preview()
 	_set_state(State.READY)
+	_publish_launcher_preview()
+	_publish_launcher_presentation()
 
 func _on_challenge_wave_due() -> void:
 	if _active_mode == null or not _active_mode.uses_timed_waves() or _state == State.GAME_OVER:
@@ -178,42 +241,61 @@ func _on_challenge_wave_due() -> void:
 func _resolve_timed_wave() -> void:
 	if _active_mode == null or not _active_mode.uses_timed_waves():
 		return
-	var next_ball_count: int = mini(
-		_current_ball_count + _active_mode.temporary_ball_gain_per_timed_wave,
-		config.maximum_ball_count
-	)
-	var is_safe_wave: bool = board_controller.resolve_timed_wave(next_ball_count, _active_mode.timed_wave_scroll_duration_seconds)
+	var is_safe_wave: bool = board_controller.resolve_timed_wave(_current_ball_count, _active_mode.timed_wave_scroll_duration_seconds)
 	if not is_safe_wave:
 		return
-	var added_ball_count: int = next_ball_count - _current_ball_count
-	_current_ball_count = next_ball_count
-	for ball_index: int in added_ball_count:
-		_challenge_available_definitions.append(_create_ball_definition(_current_ball_count - added_ball_count + ball_index))
-	_publish_launcher_preview()
-	_publish_launcher_launchability()
-
-func _get_classic_next_ball_count() -> int:
-	_classic_safe_turns += 1
-	var growth_steps: int = _classic_safe_turns / config.safe_turns_per_ball_growth
-	return mini(config.initial_ball_count + growth_steps, config.maximum_ball_count)
 
 func _on_launch_queue_changed(queued_definitions: Array[BallDefinition]) -> void:
 	if _active_mode != null and _active_mode.uses_timed_waves():
 		return
-	launcher_preview_changed.emit(queued_definitions)
-
-func _on_ball_recovered(definition: BallDefinition) -> void:
-	if _active_mode == null or not _active_mode.uses_timed_waves() or _state == State.GAME_OVER:
-		return
-	_challenge_available_definitions.append(definition)
+	_classic_queued_definitions = queued_definitions.duplicate()
 	_publish_launcher_preview()
+	_publish_launcher_presentation()
+
+func _on_ball_recovered(definition: BallDefinition, recovery_direction: float) -> void:
+	if _active_mode == null or _state == State.GAME_OVER:
+		return
+	if _active_mode.uses_timed_waves():
+		_challenge_available_definitions.append(definition)
+	else:
+		classic_launcher_recovery_received.emit(definition, recovery_direction)
+		_classic_recovered_definitions.append(definition)
+	_publish_launcher_preview()
+	_publish_launcher_presentation()
 	_publish_launcher_launchability()
+
+func confirm_launcher_next_ball_release(batch_id: int, preferred_definition: BallDefinition) -> void:
+	ball_manager.release_next_ball(batch_id, preferred_definition)
+
+func _on_next_ball_release_requested(batch_id: int) -> void:
+	if _active_mode != null and _active_mode.uses_timed_waves():
+		ball_manager.release_next_ball(batch_id)
+		return
+	launcher_next_ball_release_requested.emit(batch_id)
+
+func _move_preferred_definition_to_front(definitions: Array[BallDefinition], preferred_definition: BallDefinition) -> void:
+	if preferred_definition == null:
+		return
+	for index: int in definitions.size():
+		if definitions[index].visual_color == preferred_definition.visual_color:
+			var selected_definition: BallDefinition = definitions.pop_at(index)
+			definitions.push_front(selected_definition)
+			return
 
 func _publish_launcher_preview() -> void:
 	launcher_preview_changed.emit(get_launcher_preview_definitions())
 
 func _publish_launcher_launchability() -> void:
 	launcher_launchability_changed.emit(can_request_launch())
+
+func _publish_launcher_presentation() -> void:
+	if _active_mode == null:
+		return
+	if _active_mode.uses_timed_waves():
+		launcher_presentation_changed.emit(Launcher.Presentation.CHALLENGE)
+		return
+	var presentation: int = Launcher.Presentation.CLASSIC_OPEN if _state == State.READY or not _classic_queued_definitions.is_empty() else Launcher.Presentation.CLASSIC_BLOCKED
+	launcher_presentation_changed.emit(presentation)
 
 func can_request_launch() -> bool:
 	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:

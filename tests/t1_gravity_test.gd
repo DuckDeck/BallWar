@@ -4,6 +4,7 @@ extends SceneTree
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 const BALL_SCENE: PackedScene = preload("res://scenes/ball.tscn")
 const MAX_GRAVITY_FRAMES: int = 60
+const MAX_LAUNCHER_READY_FRAMES: int = 180
 
 func _initialize() -> void:
 	var main: Main = MAIN_SCENE.instantiate() as Main
@@ -13,6 +14,10 @@ func _initialize() -> void:
 	var controller: GameController = main.get_node("GameController") as GameController
 	var ball_layer: Node2D = main.get_node("BallLayer") as Node2D
 	var launcher: Launcher = main.get_node("Launcher") as Launcher
+	var launcher_frames: int = 0
+	while not launcher.is_launch_ready() and launcher_frames < MAX_LAUNCHER_READY_FRAMES:
+		await physics_frame
+		launcher_frames += 1
 	assert(launcher.is_launch_ready(), "A waiting ball must be visible at the roof gap while the round is READY.")
 	if launcher.global_position != controller.config.launcher_position:
 		push_error("Launcher visual and ball spawn positions must stay aligned.")

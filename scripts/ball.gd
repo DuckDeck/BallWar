@@ -24,11 +24,14 @@ var _recovery_direction: float = 1.0
 var _pending_recovery_reason: StringName = &"bottom_trough"
 var _roof_return_targets: Array[Vector2] = []
 var _roof_return_target_index: int = 0
+var _recovery_terminal_position: Vector2 = Vector2.ZERO
+var _has_custom_recovery_terminal: bool = false
 var _trail: Line2D
 var _trail_points: Array[Vector2] = []
 var _trail_ages: Array[float] = []
 var _hit_sequence: int = 0
 var _hit_resolver: HitResolver = HitResolver.new()
+var _hit_random: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	assert(config != null, "Ball requires a GameConfig resource.")
@@ -36,6 +39,7 @@ func _ready() -> void:
 		definition = BallDefinition.new()
 	if runtime_state == null:
 		runtime_state = BallRuntimeState.new()
+	_hit_random.randomize()
 	_sync_collision_radius()
 	_setup_trail()
 	queue_redraw()
@@ -48,6 +52,27 @@ func launch(direction: Vector2) -> void:
 	runtime_state.is_gravity_enabled = false
 	_is_active = true
 	_motion_state = MotionState.ACTIVE
+
+func launch_bonus_drop() -> void:
+	velocity = Vector2.ZERO
+	runtime_state.velocity = Vector2.ZERO
+	runtime_state.is_gravity_enabled = true
+	_is_active = true
+	_motion_state = MotionState.ACTIVE
+
+func become_heavy(radius_multiplier: float, gravity_multiplier: float, double_damage_probability: float) -> void:
+	definition.type = BallDefinition.Type.HEAVY
+	definition.radius_multiplier = radius_multiplier
+	definition.gravity_multiplier = gravity_multiplier
+	definition.double_damage_probability = double_damage_probability
+	_sync_collision_radius()
+	if is_instance_valid(_trail):
+		_trail.width = _get_radius() * config.ball_trail_width_multiplier
+	queue_redraw()
+
+func set_recovery_terminal_position(position: Vector2) -> void:
+	_recovery_terminal_position = position
+	_has_custom_recovery_terminal = true
 
 func force_recover(reason: StringName) -> void:
 	_recover(reason)
@@ -115,6 +140,20 @@ func get_recovery_reason() -> StringName:
 func get_visual_color() -> Color:
 	return definition.visual_color
 
+func get_recovery_terminal_position() -> Vector2:
+	return _get_recovery_terminal_position()
+
+func get_recovery_direction() -> float:
+	return _recovery_direction
+
+func get_effective_radius() -> float:
+	return _get_radius()
+
+func roll_obstacle_damage() -> int:
+	if definition.type == BallDefinition.Type.HEAVY and _hit_random.randf() < definition.double_damage_probability:
+		return 2
+	return definition.damage
+
 func _process_active_motion(delta: float) -> void:
 	runtime_state.elapsed_seconds += delta
 	if runtime_state.is_gravity_enabled:
@@ -160,7 +199,7 @@ func _resolve_collision(collision: KinematicCollision2D) -> HitResult:
 		return default_result
 	var context: HitContext = HitContext.new()
 	context.source_ball = self
-	context.damage = definition.damage
+	context.damage = roll_obstacle_damage()
 	context.hit_position = collision.get_position()
 	context.hit_normal = collision.get_normal()
 	context.incoming_velocity = velocity
@@ -223,7 +262,7 @@ func _build_roof_return_path() -> void:
 	_roof_return_targets = [
 		Vector2(side_top_x, config.arena_top),
 		Vector2(roof_apex_x, config.roof_apex_y),
-		config.launcher_position,
+		_get_recovery_terminal_position(),
 	]
 	_roof_return_target_index = 0
 
@@ -248,8 +287,11 @@ func _recover(reason: StringName) -> void:
 	_clear_trail()
 	recovered.emit(reason)
 
+func _get_recovery_terminal_position() -> Vector2:
+	return _recovery_terminal_position if _has_custom_recovery_terminal else config.launcher_position
+
 func _get_radius() -> float:
-	return config.ball_radius
+	return config.ball_radius * definition.radius_multiplier
 
 func _sync_collision_radius() -> void:
 	var collision_shape: CollisionShape2D = get_node("CollisionShape2D") as CollisionShape2D

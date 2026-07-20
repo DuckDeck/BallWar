@@ -3,6 +3,7 @@ extends SceneTree
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 const MAX_RECOVERY_FRAMES: int = 480
+const MAX_LAUNCHER_READY_FRAMES: int = 180
 
 var _completed_reason: StringName = &""
 var _completed_position: Vector2 = Vector2.ZERO
@@ -18,6 +19,11 @@ func _initialize() -> void:
 	controller.config.initial_ball_count = 1
 	controller.config.maximum_ball_count = 1
 	controller.config.ball_max_lifetime = 0.01
+	var launcher: Launcher = main.get_node("Launcher") as Launcher
+	var launcher_frames: int = 0
+	while not launcher.is_launch_ready() and launcher_frames < MAX_LAUNCHER_READY_FRAMES:
+		await physics_frame
+		launcher_frames += 1
 	controller.request_launch(Vector2.DOWN)
 	var startup_frames: int = 0
 	while manager.get_active_ball_count() == 0 and startup_frames < 4:
@@ -50,11 +56,11 @@ func _initialize() -> void:
 		push_error("The round must resolve only after the return animation completes.")
 		quit(1)
 		return
-	if _completed_reason != &"lifetime_expired" or _completed_position.distance_to(controller.config.launcher_position) > 0.1:
-		push_error("The final ball must reach the launcher and retain its fallback reason before turn resolution. reason=%s position=%s" % [_completed_reason, _completed_position])
+	if _completed_reason != &"lifetime_expired" or _completed_position.distance_to(controller.config.get_classic_launcher_staging_position()) > 0.1:
+		push_error("A classic-mode ball must reach the closed-launcher staging point and retain its fallback reason before turn resolution. reason=%s position=%s" % [_completed_reason, _completed_position])
 		quit(1)
 		return
-	print("T1 recovery gate test passed: fallback recovery completes at the launcher before turn resolution.")
+	print("T1 recovery gate test passed: fallback recovery completes at the classic staging point before turn resolution.")
 	quit(0)
 
 func _on_ball_recovered(reason: StringName, ball: Ball) -> void:
