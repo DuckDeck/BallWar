@@ -13,6 +13,7 @@
 [ext_resource type="Resource" path="res://resources/modes/classic_mode.tres" id="11_classic_mode"]
 [ext_resource type="Resource" path="res://resources/modes/challenge_mode.tres" id="12_challenge_mode"]
 [ext_resource type="Script" uid="uid://clijml8mp0s1r" path="res://scripts/mode_selection.gd" id="13_mode_selection"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSCMedium-4.ttf" id="14_menu_font"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -157,6 +158,7 @@ theme_override_colors/font_color = Color(0.73, 0.34, 1, 1)
 theme_override_colors/font_shadow_color = Color(0.02, 0.02, 0.08, 0.9)
 theme_override_constants/shadow_offset_x = 5
 theme_override_constants/shadow_offset_y = 8
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 104
 text = "弹球大作战"
 horizontal_alignment = 1
@@ -168,6 +170,7 @@ offset_top = 730.0
 offset_right = 960.0
 offset_bottom = 790.0
 theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 34
 text = "选择模式开始游戏"
 horizontal_alignment = 1
@@ -179,6 +182,7 @@ offset_top = 1010.0
 offset_right = 500.0
 offset_bottom = 1100.0
 theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 30
 text = "经典模式
 球回收后推进方块"
@@ -191,6 +195,7 @@ offset_top = 1010.0
 offset_right = 970.0
 offset_bottom = 1100.0
 theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 30
 text = "挑战模式
 每 10 秒推进方块"
@@ -204,6 +209,7 @@ offset_top = 1160.0
 offset_right = 516.0
 offset_bottom = 1290.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 50
 text = "经典模式"
 
@@ -215,5 +221,6 @@ offset_top = 1160.0
 offset_right = 996.0
 offset_bottom = 1290.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 50
 text = "挑战模式"

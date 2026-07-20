@@ -10,6 +10,8 @@ extends Node2D
 @onready var _arena_renderer: Node2D = $ArenaRenderer
 
 func _ready() -> void:
+	if OS.has_feature("android"):
+		DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
 	_launcher.launch_requested.connect(_game_controller.request_launch)
 	_game_controller.score_changed.connect(_on_score_changed)
 	_game_controller.state_changed.connect(_on_state_changed)

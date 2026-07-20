@@ -3,6 +3,7 @@ extends SceneTree
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 const BALL_SCENE: PackedScene = preload("res://scenes/ball.tscn")
+const OBSTACLE_SCENE: PackedScene = preload("res://scenes/obstacle.tscn")
 
 func _initialize() -> void:
 	var main: Main = MAIN_SCENE.instantiate() as Main
@@ -11,6 +12,7 @@ func _initialize() -> void:
 	main.start_game_by_mode_id(GameModeDefinition.Mode.CLASSIC)
 	var launcher: Launcher = main.get_node("Launcher") as Launcher
 	var ball_layer: Node2D = main.get_node("BallLayer") as Node2D
+	var obstacle_layer: Node2D = main.get_node("ObstacleLayer") as Node2D
 	var guide_segments: Array[PackedVector2Array] = launcher.get_aim_guide_segments(Vector2(1.0, 0.2))
 	assert(guide_segments.size() == 2, "A guide aimed at the side wall must include one reflection segment.")
 	var primary_segment: PackedVector2Array = guide_segments[0]
@@ -33,5 +35,20 @@ func _initialize() -> void:
 	assert(ball.runtime_state.is_gravity_enabled, "The launched ball must reach the predicted side-wall collision.")
 	var predicted_reflection: Vector2 = (reflected_segment[1] - reflected_segment[0]).normalized()
 	assert(ball.velocity.normalized().dot(predicted_reflection) > 0.999, "The guide reflection angle must match the real ball rebound angle.")
+	ball.queue_free()
+	var obstacle: Obstacle = OBSTACLE_SCENE.instantiate() as Obstacle
+	obstacle.config = launcher.config
+	obstacle_layer.add_child(obstacle)
+	obstacle.global_position = launcher.global_position + Vector2(0.0, 360.0)
+	obstacle.configure(1, 0, Obstacle.Shape.CIRCLE)
+	await physics_frame
+	var obstacle_segments: Array[PackedVector2Array] = launcher.get_aim_guide_segments(Vector2.DOWN)
+	assert(obstacle_segments.size() == 2, "A guide aimed at an obstacle must include one reflection segment.")
+	var obstacle_primary: PackedVector2Array = obstacle_segments[0]
+	var obstacle_reflection: PackedVector2Array = obstacle_segments[1]
+	var expected_contact_center_y: float = obstacle.global_position.y - Obstacle.SHAPE_RADIUS - launcher.config.ball_radius
+	assert(obstacle_primary[1].y < expected_contact_center_y and obstacle_primary[1].y > expected_contact_center_y - launcher.config.ball_radius * 0.5, "The guide must stop at the swept ball's first safe obstacle contact position.")
+	assert(obstacle_reflection[1].y < obstacle_reflection[0].y, "An obstacle reflection must point away from the obstacle.")
+	obstacle.queue_free()
 	print("T1 aim guide test passed: first hit and one short reflection are predicted.")
 	quit(0)

@@ -79,15 +79,23 @@ func get_aim_guide_segments(direction: Vector2) -> Array[PackedVector2Array]:
 	shape_query.transform = Transform2D(0.0, primary_start)
 	shape_query.motion = motion
 	shape_query.collision_mask = 1
+	shape_query.collide_with_bodies = true
+	shape_query.collide_with_areas = false
 	var space_state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var cast_result: PackedFloat32Array = space_state.cast_motion(shape_query)
 	var safe_fraction: float = cast_result[0] if not cast_result.is_empty() else 1.0
 	if safe_fraction < 1.0:
 		primary_end = primary_start + motion * safe_fraction
-		shape_query.transform = Transform2D(0.0, primary_end)
-		shape_query.motion = motion * (1.0 - safe_fraction)
+		var unsafe_fraction: float = cast_result[1] if cast_result.size() > 1 else safe_fraction
+		# cast_motion 的 safe 位置刻意仍未接触；在首次 unsafe 位置读取同一圆形扫掠
+		# 的接触法线，避免空法线使反射段继续穿过障碍物。
+		shape_query.transform = Transform2D(0.0, primary_start + motion * unsafe_fraction)
+		shape_query.motion = Vector2.ZERO
 		var rest_info: Dictionary = space_state.get_rest_info(shape_query)
 		var hit_normal: Vector2 = rest_info.get("normal", Vector2.ZERO) as Vector2
+		if hit_normal.is_zero_approx():
+			segments.append(PackedVector2Array([primary_start, primary_end]))
+			return segments
 		var reflected_direction: Vector2 = primary_direction.bounce(hit_normal).normalized()
 		var reflected_end: Vector2 = primary_end + reflected_direction * config.aim_guide_reflection_length
 		segments.append(PackedVector2Array([primary_start, primary_end]))
