@@ -17,6 +17,12 @@ func _initialize() -> void:
 	var layout: BoardLayout = BoardLayout.new()
 	layout.configure(config)
 	var generator: WaveGenerator = WaveGenerator.new()
+	config.wave_min_blocks = 1
+	config.wave_max_blocks = 1
+	generator.reset(20260720)
+	assert(generator.generate_bottom_row(layout, config, 4).size() == 4, "A wave must never generate fewer than four occupied cells, even with stale low configuration values.")
+	config.wave_min_blocks = 6
+	config.wave_max_blocks = 6
 	generator.reset(20260720)
 	var observed_shapes: Dictionary = {}
 	for wave_index: int in 24:

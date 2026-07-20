@@ -16,6 +16,7 @@ var _state: BoardState = BoardState.new()
 var _wave_generator: WaveGenerator = WaveGenerator.new()
 var _board_nodes_by_id: Dictionary = {}
 var _next_board_node_id: int = 1
+var _generated_wave_count: int = 0
 var _last_resolved_batch_id: int = -1
 var _is_game_over: bool = false
 var _is_timed_wave_animating: bool = false
@@ -28,7 +29,8 @@ func _ready() -> void:
 
 func initialize_board(next_ball_count: int = 1) -> void:
 	_layout.configure(config)
-	_wave_generator.reset(config.wave_seed)
+	_generated_wave_count = 0
+	_wave_generator.reset(_get_session_wave_seed())
 	_spawn_bottom_row(next_ball_count)
 
 func get_obstacle_count() -> int:
@@ -91,7 +93,8 @@ func _animate_timed_wave(cells_by_obstacle_id: Dictionary, scroll_offset: Vector
 	_is_timed_wave_animating = false
 
 func _spawn_bottom_row(next_ball_count: int, initial_visual_offset: Vector2 = Vector2.ZERO) -> void:
-	var entries: Array[WaveEntry] = _wave_generator.generate_bottom_row(_layout, config, next_ball_count)
+	_generated_wave_count += 1
+	var entries: Array[WaveEntry] = _wave_generator.generate_bottom_row(_layout, config, next_ball_count, _generated_wave_count)
 	for entry: WaveEntry in entries:
 		var cell: Vector2i = Vector2i(entry.column, 0)
 		if entry.content == WaveEntry.Content.OBSTACLE:
@@ -143,6 +146,13 @@ func _has_reached_danger_line() -> bool:
 		if _layout.get_cell_top_y(cell) <= _layout.danger_line_y:
 			return true
 	return false
+
+func _get_session_wave_seed() -> int:
+	if config.wave_seed != 0:
+		return config.wave_seed
+	var random: RandomNumberGenerator = RandomNumberGenerator.new()
+	random.randomize()
+	return random.randi()
 
 func _on_obstacle_destroyed(points: int, obstacle_id: int) -> void:
 	_state.release_obstacle(obstacle_id)

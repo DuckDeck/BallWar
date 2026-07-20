@@ -14,6 +14,7 @@ func _initialize() -> void:
 	controller.config.initial_ball_count = 1
 	controller.config.maximum_ball_count = 4
 	controller.config.heavy_ball_spawn_probability = 0.0
+	controller.config.reward_start_wave = 1
 	controller.config.add_ball_reward_probability = 1.0
 	controller.config.enlarge_ball_reward_probability = 0.0
 	main.start_game_by_mode_id(GameModeDefinition.Mode.CLASSIC)
@@ -50,18 +51,22 @@ func _initialize() -> void:
 
 func _verify_reward_generation() -> void:
 	var config: GameConfig = GameConfig.new()
+	config.reward_start_wave = 3
 	config.add_ball_reward_probability = 1.0
 	config.enlarge_ball_reward_probability = 0.0
 	var layout: BoardLayout = BoardLayout.new()
 	layout.configure(config)
 	var generator: WaveGenerator = WaveGenerator.new()
 	generator.reset(9)
-	for entry: WaveEntry in generator.generate_bottom_row(layout, config, 1):
+	for early_wave_index: int in 2:
+		for entry: WaveEntry in generator.generate_bottom_row(layout, config, 1, early_wave_index + 1):
+			assert(entry.content == WaveEntry.Content.OBSTACLE, "The first two generated rows must not contain rewards.")
+	for entry: WaveEntry in generator.generate_bottom_row(layout, config, 1, 3):
 		assert(entry.content == WaveEntry.Content.ADD_BALL_REWARD, "Add-ball probability must control reward replacement independently.")
 	config.add_ball_reward_probability = 0.0
 	config.enlarge_ball_reward_probability = 1.0
 	generator.reset(9)
-	for entry: WaveEntry in generator.generate_bottom_row(layout, config, 1):
+	for entry: WaveEntry in generator.generate_bottom_row(layout, config, 1, 3):
 		assert(entry.content == WaveEntry.Content.ENLARGE_BALL_REWARD, "Enlarge probability must control reward replacement independently.")
 
 func _get_first_reward(board: BoardController) -> RewardBlock:

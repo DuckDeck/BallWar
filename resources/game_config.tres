@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_game_config")
+wave_seed = 0
 ball_gravity = 4000.0
 ball_radius = 15
 ball_trail_duration = 0.32
@@ -11,3 +12,4 @@ ball_palette = PackedColorArray(0.851, 1, 0.247, 1, 0.725, 0.424, 1, 1, 1, 0.557
 recovery_roll_speed = 1640.0
 recovery_lift_speed = 2200.0
 recovery_roof_speed = 1720.0
+wave_min_blocks = 4

@@ -96,20 +96,23 @@ func get_bottom_trough_y(world_x: float) -> float:
 @export var score_per_obstacle: int = 10
 
 @export_group("Board")
-@export_range(1, 12, 1) var board_columns: int = 7
+@export_range(4, 12, 1) var board_columns: int = 7
 @export var board_cell_size: Vector2 = Vector2(120.0, 120.0)
 @export var board_bottom_row_y: float = 1420.0
 @export var board_danger_line_y: float = 420.0
 
 @export_group("Wave Progression")
-@export var wave_seed: int = 20260719
-@export_range(1, 12, 1) var wave_min_blocks: int = 1
-@export_range(1, 12, 1) var wave_max_blocks: int = 7
+# `0` 表示每局生成新随机种子；非零值仅用于测试或复现调试布局。
+@export var wave_seed: int = 0
+@export_range(4, 12, 1) var wave_min_blocks: int = 4
+@export_range(4, 12, 1) var wave_max_blocks: int = 7
 # 新障碍数字范围 = 下一回合可控球数 × 此最小倍率。
 @export_range(1, 10, 1) var wave_health_min_ball_multiplier: int = 1
 # 新障碍数字范围 = 下一回合可控球数 × 此最大倍率。
 @export_range(1, 10, 1) var wave_health_max_ball_multiplier: int = 2
 
 @export_group("Reward Blocks")
-@export_range(0.0, 1.0, 0.01) var add_ball_reward_probability: float = 0.09
+# 前两行只生成普通障碍；第 3 行起才允许按奖励概率替代格位。
+@export_range(1, 30, 1) var reward_start_wave: int = 3
+@export_range(0.0, 1.0, 0.01) var add_ball_reward_probability: float = 0.10
 @export_range(0.0, 1.0, 0.01) var enlarge_ball_reward_probability: float = 0.05
