@@ -2,16 +2,18 @@
 extends SceneTree
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
+const TEST_SESSION_PATH: String = "user://t4_pause_test_sessions.cfg"
 
 func _initialize() -> void:
 	var main: Main = MAIN_SCENE.instantiate() as Main
+	main.session_store_path = TEST_SESSION_PATH
 	root.add_child(main)
 	await process_frame
 	var controller: GameController = main.get_node("GameController") as GameController
 	var manager: BallManager = main.get_node("BallManager") as BallManager
 	var board: BoardController = main.get_node("BoardController") as BoardController
 	var clock: ChallengeWaveClock = main.get_node("ChallengeWaveClock") as ChallengeWaveClock
-	var pause_button: Button = main.get_node("CanvasLayer/PauseButton") as Button
+	var pause_button: Button = main.get_node("CanvasLayer/Hud/PauseButton") as Button
 	var pause_menu: Control = main.get_node("CanvasLayer/PauseMenu") as Control
 	var save_exit_button: Button = pause_menu.get_node("SaveExitButton") as Button
 	controller.config.initial_ball_count = 1
@@ -27,7 +29,7 @@ func _initialize() -> void:
 	pause_button.pressed.emit()
 	assert(paused and controller.get_state() == GameController.State.PAUSED, "The pause button must freeze the game through the PAUSED state.")
 	assert(pause_menu.visible, "Pausing must show the pause overlay.")
-	assert(save_exit_button.disabled, "Save and exit must remain visibly disabled until persistent session storage is implemented.")
+	assert(not save_exit_button.disabled, "Save and exit must be available from the paused menu.")
 	assert(pause_menu.get("icon_font") is Font, "The pause menu must bind the project icon font separately from its Chinese text font.")
 	await create_timer(1.1, true).timeout
 	assert(active_ball.global_position.is_equal_approx(position_before_pause), "An active ball must not move while the tree is paused.")
@@ -50,5 +52,15 @@ func _initialize() -> void:
 	assert(controller.get_score() == 0 and controller.get_elapsed_seconds() == 0, "Restarting must reset score and session time.")
 	assert(board.get_obstacle_count() >= 4, "Restarting must create a fresh first row of board content.")
 	assert(not clock.is_stopped(), "Restarting challenge mode must start a fresh wave clock.")
-	print("T4 pause test passed: overlay, freeze, resume, and same-mode restart verified.")
+	pause_button.pressed.emit()
+	assert(paused and controller.get_state() == GameController.State.PAUSED, "Save and exit must only operate from the paused state.")
+	save_exit_button.pressed.emit()
+	await process_frame
+	assert(not paused and controller.get_state() == GameController.State.MODE_SELECTION, "Save and exit must return to the mode selection screen.")
+	assert(main.get_node("CanvasLayer/ModeSelection").visible, "Mode selection must be visible after saving and exiting.")
+	assert(main.get_node("CanvasLayer/ModeSelection/ChallengeContinueButton").visible, "Challenge save data must expose a dedicated continue action.")
+	var session_store: GameSessionStore = GameSessionStore.new(TEST_SESSION_PATH)
+	session_store.clear_session(GameModeDefinition.Mode.CLASSIC)
+	session_store.clear_session(GameModeDefinition.Mode.CHALLENGE)
+	print("T4 pause test passed: overlay, freeze, resume, restart, and save-and-exit verified.")
 	quit(0)

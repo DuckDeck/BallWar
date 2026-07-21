@@ -6,6 +6,12 @@ var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 func reset(seed: int) -> void:
 	_random.seed = seed
 
+func get_random_state() -> int:
+	return _random.state
+
+func set_random_state(state: int) -> void:
+	_random.state = state
+
 func generate_bottom_row(layout: BoardLayout, config: GameConfig, next_ball_count: int, wave_index: int = 1) -> Array[WaveEntry]:
 	var columns: Array[int] = []
 	for column: int in layout.columns:

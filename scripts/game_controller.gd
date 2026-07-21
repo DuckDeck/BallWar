@@ -13,6 +13,7 @@ signal launcher_next_ball_release_requested(batch_id: int)
 signal launcher_preview_recovery_received(definition: BallDefinition, recovery_direction: float)
 signal challenge_wave_remaining_changed(remaining_seconds: int)
 signal game_mode_changed(mode: int)
+signal session_checkpoint_changed(snapshot: Dictionary)
 
 enum State {
 	MODE_SELECTION,
@@ -46,6 +47,7 @@ var _challenge_queued_definitions: Array[BallDefinition] = []
 var _classic_available_definitions: Array[BallDefinition] = []
 var _classic_queued_definitions: Array[BallDefinition] = []
 var _classic_recovered_definitions: Array[BallDefinition] = []
+var _classic_checkpoint: Dictionary = {}
 
 func _ready() -> void:
 	assert(config != null, "GameController requires a GameConfig resource.")
@@ -103,6 +105,7 @@ func return_to_mode_selection() -> bool:
 	_classic_available_definitions.clear()
 	_classic_queued_definitions.clear()
 	_classic_recovered_definitions.clear()
+	_classic_checkpoint.clear()
 	_score = 0
 	_turn = 1
 	_elapsed_time = 0.0
@@ -131,6 +134,7 @@ func _initialize_game(mode: GameModeDefinition) -> void:
 	_classic_available_definitions.clear()
 	_classic_queued_definitions.clear()
 	_classic_recovered_definitions.clear()
+	_classic_checkpoint.clear()
 	_elapsed_time = 0.0
 	_displayed_elapsed_seconds = 0
 	score_changed.emit(_score)
@@ -152,6 +156,7 @@ func _initialize_game(mode: GameModeDefinition) -> void:
 	_publish_launcher_launchability()
 	if not _active_mode.uses_timed_waves():
 		_publish_launcher_presentation()
+		_capture_classic_checkpoint()
 
 func _process(delta: float) -> void:
 	if _state == State.MODE_SELECTION or _state == State.PAUSED or _state == State.GAME_OVER:
@@ -227,12 +232,117 @@ func get_launcher_preview_definitions() -> Array[BallDefinition]:
 func get_active_mode() -> int:
 	return GameModeDefinition.Mode.CLASSIC if _active_mode == null else _active_mode.mode
 
+func get_session_snapshot() -> Dictionary:
+	if _active_mode == null or _state == State.MODE_SELECTION or _state == State.GAME_OVER:
+		return {}
+	if not _active_mode.uses_timed_waves():
+		return _classic_checkpoint.duplicate(true)
+	return _build_session_snapshot(_get_challenge_recoverable_definitions(), challenge_wave_clock.time_left)
+
+func restore_session(snapshot: Dictionary) -> bool:
+	if _state != State.MODE_SELECTION:
+		return false
+	var saved_mode: int = int(snapshot.get("mode", -1))
+	if saved_mode != GameModeDefinition.Mode.CLASSIC and saved_mode != GameModeDefinition.Mode.CHALLENGE:
+		return false
+	var raw_definitions: Variant = snapshot.get("ball_definitions", [])
+	var raw_board: Variant = snapshot.get("board", {})
+	if not (raw_definitions is Array) or not (raw_board is Dictionary):
+		return false
+	var restored_definitions: Array[BallDefinition] = _deserialize_definitions(raw_definitions as Array)
+	if restored_definitions.is_empty():
+		return false
+	_active_mode = challenge_mode if saved_mode == GameModeDefinition.Mode.CHALLENGE else classic_mode
+	challenge_wave_clock.stop_clock()
+	ball_manager.reset_balls()
+	board_controller.reset_board()
+	if not board_controller.restore_snapshot(raw_board as Dictionary):
+		_active_mode = null
+		_classic_checkpoint.clear()
+		return false
+	_score = maxi(0, int(snapshot.get("score", 0)))
+	_turn = maxi(1, int(snapshot.get("turn", 1)))
+	_elapsed_time = maxf(0.0, float(snapshot.get("elapsed_seconds", 0)))
+	_displayed_elapsed_seconds = int(_elapsed_time)
+	_next_batch_id = maxi(1, int(snapshot.get("next_batch_id", 1)))
+	_current_ball_count = restored_definitions.size()
+	_pending_timed_wave = false
+	_challenge_available_definitions.clear()
+	_challenge_queued_definitions.clear()
+	_classic_available_definitions.clear()
+	_classic_queued_definitions.clear()
+	_classic_recovered_definitions.clear()
+	if _active_mode.uses_timed_waves():
+		_challenge_available_definitions.append_array(restored_definitions)
+		var remaining_seconds: float = float(snapshot.get("challenge_remaining_seconds", _active_mode.timed_wave_interval_seconds))
+		challenge_wave_clock.resume_clock(_active_mode.timed_wave_interval_seconds, remaining_seconds)
+	else:
+		_classic_available_definitions.append_array(restored_definitions)
+	game_mode_changed.emit(_active_mode.mode)
+	score_changed.emit(_score)
+	turn_changed.emit(_turn)
+	elapsed_time_changed.emit(_displayed_elapsed_seconds)
+	_set_state(State.READY)
+	_publish_launcher_preview()
+	_publish_launcher_presentation()
+	_publish_launcher_launchability()
+	if not _active_mode.uses_timed_waves():
+		_capture_classic_checkpoint()
+	return true
+
 func _build_ball_definitions() -> Array[BallDefinition]:
 	var definitions: Array[BallDefinition] = []
 	var ball_count: int = _current_ball_count
 	for ball_index: int in ball_count:
 		definitions.append(_create_ball_definition(ball_index))
 	return definitions
+
+func _get_challenge_recoverable_definitions() -> Array[BallDefinition]:
+	var definitions: Array[BallDefinition] = _challenge_available_definitions.duplicate()
+	definitions.append_array(ball_manager.get_in_flight_definitions())
+	return definitions
+
+func _build_session_snapshot(definitions: Array[BallDefinition], challenge_remaining_seconds: float) -> Dictionary:
+	var serialized_definitions: Array[Dictionary] = []
+	for definition: BallDefinition in definitions:
+		serialized_definitions.append({
+			"type": definition.type,
+			"radius_multiplier": definition.radius_multiplier,
+			"gravity_multiplier": definition.gravity_multiplier,
+			"double_damage_probability": definition.double_damage_probability,
+			"visual_color": definition.visual_color.to_html(),
+		})
+	return {
+		"mode": get_active_mode(),
+		"score": _score,
+		"turn": _turn,
+		"elapsed_seconds": _displayed_elapsed_seconds,
+		"next_batch_id": _next_batch_id,
+		"ball_definitions": serialized_definitions,
+		"board": board_controller.create_snapshot(),
+		"challenge_remaining_seconds": challenge_remaining_seconds,
+	}
+
+func _deserialize_definitions(raw_definitions: Array) -> Array[BallDefinition]:
+	var definitions: Array[BallDefinition] = []
+	for raw_definition: Variant in raw_definitions:
+		if not (raw_definition is Dictionary):
+			return []
+		var values: Dictionary = raw_definition as Dictionary
+		var definition: BallDefinition = BallDefinition.new()
+		definition.type = clampi(int(values.get("type", BallDefinition.Type.NORMAL)), BallDefinition.Type.NORMAL, BallDefinition.Type.HEAVY)
+		definition.radius_multiplier = maxf(0.1, float(values.get("radius_multiplier", 1.0)))
+		definition.gravity_multiplier = maxf(0.1, float(values.get("gravity_multiplier", 1.0)))
+		definition.double_damage_probability = clampf(float(values.get("double_damage_probability", 0.0)), 0.0, 1.0)
+		definition.visual_color = Color.from_string(str(values.get("visual_color", "d9ff3f")), Color("d9ff3f"))
+		definitions.append(definition)
+	return definitions
+
+func _capture_classic_checkpoint() -> void:
+	if _active_mode == null or _active_mode.uses_timed_waves() or _state != State.READY:
+		return
+	_classic_checkpoint = _build_session_snapshot(_classic_available_definitions, 0.0)
+	session_checkpoint_changed.emit(_classic_checkpoint.duplicate(true))
 
 func _create_ball_definition(ball_index: int) -> BallDefinition:
 	var definition: BallDefinition = _create_normal_ball_definition(ball_index)
@@ -298,6 +408,7 @@ func _resolve_completed_batch(batch_id: int) -> void:
 	_set_state(State.READY)
 	_publish_launcher_preview()
 	_publish_launcher_presentation()
+	_capture_classic_checkpoint()
 
 func _on_challenge_wave_due() -> void:
 	if _active_mode == null or not _active_mode.uses_timed_waves() or _state == State.GAME_OVER:

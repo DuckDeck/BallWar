@@ -39,6 +39,9 @@ func configure(initial_health: int, points: int, next_shape_type: int = Shape.HE
 	_sync_collision_shape()
 	queue_redraw()
 
+func get_health() -> int:
+	return _health
+
 func receive_hit(context: HitContext) -> HitResult:
 	var result: HitResult = HitResult.new()
 	result.bounce_multiplier = config.obstacle_bounce_restitution

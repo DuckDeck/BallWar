@@ -70,6 +70,15 @@ func has_pending_launches() -> bool:
 			return true
 	return false
 
+func get_in_flight_definitions() -> Array[BallDefinition]:
+	var definitions: Array[BallDefinition] = []
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		definitions.append_array(sequence.pending_definitions)
+		for ball: Ball in sequence.active_balls.values():
+			if is_instance_valid(ball):
+				definitions.append(ball.definition)
+	return definitions
+
 func freeze_active_balls_for_game_over() -> void:
 	for sequence: BallLaunchSequence in _sequences_by_batch.values():
 		for ball: Ball in sequence.active_balls.values():

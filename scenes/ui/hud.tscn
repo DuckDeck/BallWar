@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scripts/ui/pause_button.gd" id="2_pause_button"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSCMedium-4.ttf" id="3_ui_font"]
+
+[node name="Hud" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="ScoreLabel" type="Label" parent="." unique_name_in_owner=true]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
+theme_override_fonts/font = ExtResource("3_ui_font")
+text = "Score: 0"
+
+[node name="TimeLabel" type="Label" parent="." unique_name_in_owner=true]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
+theme_override_fonts/font = ExtResource("3_ui_font")
+text = "Time: 00:00"
+horizontal_alignment = 2
+
+[node name="WaveLabel" type="Label" parent="." unique_name_in_owner=true]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.32, 0.88, 0.83, 1)
+theme_override_fonts/font = ExtResource("3_ui_font")
+text = "Wave: 10s"
+horizontal_alignment = 2
+
+[node name="PauseButton" type="Button" parent="." unique_name_in_owner=true]
+layout_mode = 0
+flat = true
+script = ExtResource("2_pause_button")

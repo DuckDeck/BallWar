@@ -18,6 +18,13 @@ func start_clock(interval_seconds: float) -> void:
 	set_process(true)
 	_publish_remaining_seconds()
 
+func resume_clock(interval_seconds: float, remaining_seconds: float) -> void:
+	wait_time = maxf(0.1, interval_seconds)
+	_last_reported_seconds = -1
+	start(clampf(remaining_seconds, 0.1, wait_time))
+	set_process(true)
+	_publish_remaining_seconds()
+
 func stop_clock() -> void:
 	stop()
 	set_process(false)

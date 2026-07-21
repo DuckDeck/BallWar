@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://scripts/ui/pause_button.gd" id="17_pause_button"]
 [ext_resource type="FontFile" path="res://assets/fonts/BallWarIconFont.ttf" id="18_icon_font"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="19_game_over_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="20_hud"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -112,46 +113,8 @@ challenge_mode = ExtResource("12_challenge_mode")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1052090290]
 
-[node name="ScoreLabel" type="Label" parent="CanvasLayer" unique_id=1947393844]
+[node name="Hud" parent="CanvasLayer" unique_id=1947393844 instance=ExtResource("20_hud")]
 unique_name_in_owner = true
-offset_left = 96.0
-offset_top = 342.0
-offset_right = 400.0
-offset_bottom = 402.0
-theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
-theme_override_font_sizes/font_size = 38
-text = "Score: 0"
-
-[node name="TimeLabel" type="Label" parent="CanvasLayer" unique_id=1864681749]
-unique_name_in_owner = true
-offset_left = 640.0
-offset_top = 342.0
-offset_right = 984.0
-offset_bottom = 402.0
-theme_override_colors/font_color = Color(0.9, 0.94, 0.95, 1)
-theme_override_font_sizes/font_size = 38
-text = "Time: 00:00"
-horizontal_alignment = 2
-
-[node name="WaveLabel" type="Label" parent="CanvasLayer" unique_id=1690422703]
-unique_name_in_owner = true
-offset_left = 672.0
-offset_top = 405.0
-offset_right = 984.0
-offset_bottom = 445.0
-theme_override_colors/font_color = Color(0.32, 0.88, 0.83, 1)
-theme_override_font_sizes/font_size = 24
-text = "Wave: 10s"
-horizontal_alignment = 2
-
-[node name="PauseButton" type="Button" parent="CanvasLayer" unique_id=1455701712]
-unique_name_in_owner = true
-offset_left = 104.0
-offset_top = 276.0
-offset_right = 174.0
-offset_bottom = 346.0
-flat = true
-script = ExtResource("17_pause_button")
 
 [node name="PauseMenu" type="Control" parent="CanvasLayer" unique_id=1285719561]
 unique_name_in_owner = true
@@ -265,3 +228,29 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 50
 text = "挑战模式"
+
+[node name="ClassicContinueButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=213963212]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 84.0
+offset_top = 1330.0
+offset_right = 516.0
+offset_bottom = 1428.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
+theme_override_font_sizes/font_size = 36
+text = "继续经典模式"
+visible = false
+
+[node name="ChallengeContinueButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=828280410]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 564.0
+offset_top = 1330.0
+offset_right = 996.0
+offset_bottom = 1428.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("14_menu_font")
+theme_override_font_sizes/font_size = 36
+text = "继续挑战模式"
+visible = false

@@ -2,6 +2,7 @@ extends Control
 
 signal resume_requested()
 signal restart_requested()
+signal save_exit_requested()
 
 @export var ui_font: Font
 @export var icon_font: Font
@@ -125,16 +126,19 @@ func _build_controls() -> void:
 	_save_exit_button = Button.new()
 	_save_exit_button.name = &"SaveExitButton"
 	_save_exit_button.text = "保存并退出" if icon_font != null else "⌂  保存并退出"
-	_save_exit_button.disabled = true
+	_save_exit_button.disabled = false
 	_save_exit_button.focus_mode = Control.FOCUS_NONE
-	_save_exit_button.add_theme_color_override(&"font_disabled_color", DISABLED_TEXT_COLOR)
+	_save_exit_button.add_theme_color_override(&"font_color", TEXT_COLOR)
 	_save_exit_button.add_theme_font_size_override(&"font_size", 46)
-	_save_exit_button.add_theme_stylebox_override(&"disabled", _button_disabled_style)
+	_save_exit_button.add_theme_stylebox_override(&"normal", _button_style)
+	_save_exit_button.add_theme_stylebox_override(&"hover", _button_hover_style)
+	_save_exit_button.add_theme_stylebox_override(&"pressed", _button_pressed_style)
 	if ui_font != null:
 		_save_exit_button.add_theme_font_override(&"font", ui_font)
 	if icon_font != null:
-		_save_exit_icon = _create_icon_label(ICON_HOME, 54, DISABLED_TEXT_COLOR)
+		_save_exit_icon = _create_icon_label(ICON_HOME, 54, TEXT_COLOR)
 		_save_exit_button.add_child(_save_exit_icon)
+	_save_exit_button.pressed.connect(save_exit_requested.emit)
 	add_child(_save_exit_button)
 
 func _create_icon_label(glyph: String, font_size: int, color: Color) -> Label:

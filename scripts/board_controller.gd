@@ -55,6 +55,74 @@ func get_obstacle_count() -> int:
 func get_cells() -> Array[Vector2i]:
 	return _state.get_occupied_cells()
 
+func create_snapshot() -> Dictionary:
+	var entries: Array[Dictionary] = []
+	for board_node_id: int in _board_nodes_by_id.keys():
+		var board_node: Node2D = _board_nodes_by_id.get(board_node_id, null) as Node2D
+		if not is_instance_valid(board_node):
+			continue
+		var cell: Vector2i = _state.get_cell_for_obstacle(board_node_id)
+		if cell.x < 0 or cell.y < 0:
+			continue
+		if board_node is Obstacle:
+			var obstacle: Obstacle = board_node as Obstacle
+			entries.append({
+				"kind": "obstacle",
+				"id": board_node_id,
+				"column": cell.x,
+				"row": cell.y,
+				"health": obstacle.get_health(),
+				"shape_type": obstacle.shape_type,
+				"rotation_degrees": obstacle.rotation_degrees,
+			})
+		elif board_node is RewardBlock:
+			var reward: RewardBlock = board_node as RewardBlock
+			entries.append({
+				"kind": "reward",
+				"id": board_node_id,
+				"column": cell.x,
+				"row": cell.y,
+				"reward_type": reward.reward_type,
+			})
+	return {
+		"entries": entries,
+		"generated_wave_count": _generated_wave_count,
+		"next_board_node_id": _next_board_node_id,
+		"wave_random_state": _wave_generator.get_random_state(),
+	}
+
+func restore_snapshot(snapshot: Dictionary) -> bool:
+	var raw_entries: Variant = snapshot.get("entries", [])
+	if not (raw_entries is Array):
+		return false
+	reset_board()
+	_layout.configure(config)
+	_generated_wave_count = maxi(0, int(snapshot.get("generated_wave_count", 0)))
+	_next_board_node_id = maxi(1, int(snapshot.get("next_board_node_id", 1)))
+	_wave_generator.set_random_state(int(snapshot.get("wave_random_state", 0)))
+	for raw_entry: Variant in raw_entries:
+		if not (raw_entry is Dictionary):
+			reset_board()
+			return false
+		var entry: Dictionary = raw_entry as Dictionary
+		var board_node_id: int = int(entry.get("id", -1))
+		var cell: Vector2i = Vector2i(int(entry.get("column", -1)), int(entry.get("row", -1)))
+		if board_node_id < 1 or not _layout.is_valid_column(cell.x) or cell.y < 0 or _state.get_cell_for_obstacle(board_node_id).x >= 0:
+			reset_board()
+			return false
+		if str(entry.get("kind", "")) == "obstacle":
+			_spawn_restored_obstacle(board_node_id, cell, entry)
+		elif str(entry.get("kind", "")) == "reward":
+			_spawn_restored_reward(board_node_id, cell, entry)
+		else:
+			reset_board()
+			return false
+		if not _board_nodes_by_id.has(board_node_id):
+			reset_board()
+			return false
+		_next_board_node_id = maxi(_next_board_node_id, board_node_id + 1)
+	return true
+
 func is_game_over() -> bool:
 	return _is_game_over
 
@@ -150,6 +218,31 @@ func _spawn_reward(cell: Vector2i, content: WaveEntry.Content, initial_visual_of
 	reward.global_position = _layout.get_cell_center(cell) + initial_visual_offset
 	var reward_type: RewardBlock.Type = RewardBlock.Type.ADD_BALL if content == WaveEntry.Content.ADD_BALL_REWARD else RewardBlock.Type.ENLARGE_BALL
 	reward.configure(reward_type)
+	_board_nodes_by_id[board_node_id] = reward
+
+func _spawn_restored_obstacle(board_node_id: int, cell: Vector2i, entry: Dictionary) -> void:
+	if not _state.register_obstacle(board_node_id, cell):
+		return
+	var obstacle: Obstacle = obstacle_scene.instantiate() as Obstacle
+	obstacle.config = config
+	obstacle.board_cell = cell
+	obstacle.obstacle_id = board_node_id
+	obstacle.destroyed.connect(_on_obstacle_destroyed.bind(board_node_id))
+	obstacle_layer.add_child(obstacle)
+	obstacle.global_position = _layout.get_cell_center(cell)
+	obstacle.configure(int(entry.get("health", 1)), config.score_per_obstacle, int(entry.get("shape_type", Obstacle.Shape.HEXAGON)), float(entry.get("rotation_degrees", 0.0)))
+	_board_nodes_by_id[board_node_id] = obstacle
+
+func _spawn_restored_reward(board_node_id: int, cell: Vector2i, entry: Dictionary) -> void:
+	if not _state.register_obstacle(board_node_id, cell):
+		return
+	var reward: RewardBlock = reward_scene.instantiate() as RewardBlock
+	reward.board_cell = cell
+	reward.board_node_id = board_node_id
+	reward.collected.connect(_on_reward_collected.bind(board_node_id))
+	obstacle_layer.add_child(reward)
+	reward.global_position = _layout.get_cell_center(cell)
+	reward.configure(RewardBlock.Type.ADD_BALL if int(entry.get("reward_type", RewardBlock.Type.ADD_BALL)) == RewardBlock.Type.ADD_BALL else RewardBlock.Type.ENLARGE_BALL)
 	_board_nodes_by_id[board_node_id] = reward
 
 func _sync_obstacles_to_cells(cells_by_obstacle_id: Dictionary) -> void:
