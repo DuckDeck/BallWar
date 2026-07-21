@@ -80,7 +80,7 @@ func start_game(mode: GameModeDefinition) -> void:
 	_initialize_game(mode)
 
 func restart_game() -> bool:
-	if _active_mode == null or _state != State.PAUSED:
+	if _active_mode == null or (_state != State.PAUSED and _state != State.GAME_OVER):
 		return false
 	challenge_wave_clock.stop_clock()
 	ball_manager.reset_balls()
@@ -89,6 +89,34 @@ func restart_game() -> bool:
 	_state_before_pause = State.MODE_SELECTION
 	_pending_timed_wave = false
 	_initialize_game(_active_mode)
+	return true
+
+func return_to_mode_selection() -> bool:
+	if _state == State.MODE_SELECTION:
+		return false
+	challenge_wave_clock.stop_clock()
+	ball_manager.reset_balls()
+	board_controller.reset_board()
+	_active_mode = null
+	_challenge_available_definitions.clear()
+	_challenge_queued_definitions.clear()
+	_classic_available_definitions.clear()
+	_classic_queued_definitions.clear()
+	_classic_recovered_definitions.clear()
+	_score = 0
+	_turn = 1
+	_elapsed_time = 0.0
+	_displayed_elapsed_seconds = 0
+	_next_batch_id = 1
+	_pending_timed_wave = false
+	_state_before_pause = State.MODE_SELECTION
+	_set_state(State.MODE_SELECTION)
+	score_changed.emit(_score)
+	turn_changed.emit(_turn)
+	elapsed_time_changed.emit(_displayed_elapsed_seconds)
+	var empty_preview: Array[BallDefinition] = []
+	launcher_preview_changed.emit(empty_preview)
+	launcher_presentation_changed.emit(Launcher.Presentation.CLASSIC_BLOCKED)
 	return true
 
 func _initialize_game(mode: GameModeDefinition) -> void:

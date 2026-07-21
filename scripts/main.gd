@@ -1,6 +1,8 @@
 class_name Main
 extends Node2D
 
+const SCORE_RECORD_STORE_SCRIPT: GDScript = preload("res://scripts/score_record_store.gd")
+
 @onready var _launcher: Launcher = %Launcher
 @onready var _game_controller: GameController = %GameController
 @onready var _score_label: Label = %ScoreLabel
@@ -8,12 +10,16 @@ extends Node2D
 @onready var _wave_label: Label = %WaveLabel
 @onready var _pause_button: Button = %PauseButton
 @onready var _pause_menu: Control = %PauseMenu
+@onready var _game_over_panel: Control = %GameOverPanel
 @onready var _mode_selection: ModeSelection = %ModeSelection
 @onready var _arena_renderer: Node2D = $ArenaRenderer
+
+var _score_record_store: ScoreRecordStore
 
 func _ready() -> void:
 	if OS.has_feature("android"):
 		DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
+	_score_record_store = SCORE_RECORD_STORE_SCRIPT.new() as ScoreRecordStore
 	_launcher.launch_requested.connect(_game_controller.request_launch)
 	_game_controller.score_changed.connect(_on_score_changed)
 	_game_controller.state_changed.connect(_on_state_changed)
@@ -25,10 +31,13 @@ func _ready() -> void:
 	_game_controller.launcher_preview_changed.connect(_on_launcher_preview_changed)
 	_game_controller.game_mode_changed.connect(_on_game_mode_changed)
 	_game_controller.challenge_wave_remaining_changed.connect(_on_challenge_wave_remaining_changed)
+	_game_controller.game_over.connect(_on_game_over)
 	_mode_selection.mode_selected.connect(_on_mode_selected)
 	_pause_button.pressed.connect(_on_pause_button_pressed)
 	_pause_menu.connect(&"resume_requested", _on_pause_menu_resume_requested)
 	_pause_menu.connect(&"restart_requested", _on_pause_menu_restart_requested)
+	_game_over_panel.connect(&"restart_requested", _on_game_over_restart_requested)
+	_game_over_panel.connect(&"menu_requested", _on_game_over_menu_requested)
 	_launcher.set_waiting_ball_definitions(_game_controller.get_launcher_preview_definitions())
 	_launcher.next_ball_release_ready.connect(_on_launcher_next_ball_release_ready)
 	_launcher.set_launch_ready(false)
@@ -36,6 +45,7 @@ func _ready() -> void:
 	_time_label.text = _format_elapsed_time(_game_controller.get_elapsed_seconds())
 	_wave_label.hide()
 	_pause_menu.hide()
+	_game_over_panel.hide()
 	_set_gameplay_visible(false)
 
 func start_game_by_mode_id(mode: int) -> void:
@@ -107,10 +117,35 @@ func restart_game() -> bool:
 		return false
 	get_tree().paused = false
 	_pause_menu.hide()
+	_game_over_panel.hide()
 	return _game_controller.restart_game()
+
+func return_to_mode_selection() -> bool:
+	if not get_tree().paused:
+		return false
+	get_tree().paused = false
+	_pause_menu.hide()
+	_game_over_panel.hide()
+	if not _game_controller.return_to_mode_selection():
+		return false
+	_set_gameplay_visible(false)
+	_mode_selection.show()
+	return true
 
 func _on_pause_menu_restart_requested() -> void:
 	restart_game()
+
+func _on_game_over(final_score: int, _reached_turn: int) -> void:
+	var active_mode: int = _game_controller.get_active_mode()
+	var records: Dictionary = _score_record_store.record_score(active_mode, final_score)
+	_game_over_panel.call("show_results", final_score, records, active_mode)
+	get_tree().paused = true
+
+func _on_game_over_restart_requested() -> void:
+	restart_game()
+
+func _on_game_over_menu_requested() -> void:
+	return_to_mode_selection()
 
 func _set_gameplay_visible(is_visible: bool) -> void:
 	_arena_renderer.visible = is_visible
@@ -121,6 +156,7 @@ func _set_gameplay_visible(is_visible: bool) -> void:
 	if not is_visible:
 		_wave_label.hide()
 		_pause_menu.hide()
+		_game_over_panel.hide()
 
 func _format_elapsed_time(total_seconds: int) -> String:
 	var minutes: int = total_seconds / 60

@@ -80,7 +80,7 @@ func _build_controls() -> void:
 	_close_button.focus_mode = Control.FOCUS_NONE
 	_close_button.flat = true
 	_close_button.add_theme_color_override(&"font_color", TEXT_COLOR)
-	_close_button.add_theme_font_size_override(&"font_size", 70 if icon_font != null else 84)
+	_close_button.add_theme_font_size_override(&"font_size", 60 if icon_font != null else 84)
 	if icon_font != null:
 		_close_button.add_theme_font_override(&"font", icon_font)
 	elif ui_font != null:
