@@ -2,10 +2,18 @@
 extends SceneTree
 
 const HUD_SCENE: PackedScene = preload("res://scenes/ui/hud.tscn")
+const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 
 var _pause_triggered: bool = false
 
 func _initialize() -> void:
+	var main: Main = MAIN_SCENE.instantiate() as Main
+	root.add_child(main)
+	await process_frame
+	var integrated_hud: GameHud = main.get_node("CanvasLayer/Hud") as GameHud
+	assert(integrated_hud.get_pause_button() != null, "The instanced HUD must resolve its own controls when loaded by the main scene.")
+	main.queue_free()
+	await process_frame
 	var hud: GameHud = HUD_SCENE.instantiate() as GameHud
 	root.add_child(hud)
 	hud.size = Vector2(1080.0, 1920.0)
