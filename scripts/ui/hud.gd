@@ -3,10 +3,10 @@ extends Control
 
 signal pause_requested()
 
-@onready var _score_label: Label = %ScoreLabel
-@onready var _time_label: Label = %TimeLabel
-@onready var _wave_label: Label = %WaveLabel
-@onready var _pause_button: Button = %PauseButton
+@onready var _score_label: Label = $ScoreLabel
+@onready var _time_label: Label = $TimeLabel
+@onready var _wave_label: Label = $WaveLabel
+@onready var _pause_button: Button = $PauseButton
 
 func _ready() -> void:
 	_pause_button.pressed.connect(pause_requested.emit)
