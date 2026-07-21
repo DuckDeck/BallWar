@@ -28,6 +28,7 @@ func _initialize() -> void:
 	assert(paused and controller.get_state() == GameController.State.PAUSED, "The pause button must freeze the game through the PAUSED state.")
 	assert(pause_menu.visible, "Pausing must show the pause overlay.")
 	assert(save_exit_button.disabled, "Save and exit must remain visibly disabled until persistent session storage is implemented.")
+	assert(pause_menu.get("icon_font") is Font, "The pause menu must bind the project icon font separately from its Chinese text font.")
 	await create_timer(1.1, true).timeout
 	assert(active_ball.global_position.is_equal_approx(position_before_pause), "An active ball must not move while the tree is paused.")
 	assert(controller.get_elapsed_seconds() == elapsed_before_pause, "The session timer must freeze while paused.")

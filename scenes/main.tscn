@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" path="res://scenes/reward_block.tscn" id="15_reward"]
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="16_pause_menu"]
 [ext_resource type="Script" path="res://scripts/ui/pause_button.gd" id="17_pause_button"]
+[ext_resource type="FontFile" path="res://assets/fonts/BallWarIconFont.ttf" id="18_icon_font"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -162,6 +163,7 @@ grow_vertical = 2
 mouse_filter = 0
 script = ExtResource("16_pause_menu")
 ui_font = ExtResource("14_menu_font")
+icon_font = ExtResource("18_icon_font")
 
 [node name="ModeSelection" type="Control" parent="CanvasLayer" unique_id=140184860]
 unique_name_in_owner = true
