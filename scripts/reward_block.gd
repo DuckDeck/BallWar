@@ -31,6 +31,7 @@ func receive_hit(context: HitContext) -> HitResult:
 		return result
 	_is_collected = true
 	_set_collision_enabled(false)
+	AudioManager.play_sfx(GameAudio.Sfx.REWARD)
 	collected.emit(reward_type, context.source_ball, global_position)
 	queue_free()
 	return result

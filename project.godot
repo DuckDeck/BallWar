@@ -14,6 +14,10 @@ config/name="Ball War"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+AudioManager="*res://scripts/audio_manager.gd"
+
 [debug]
 
 gdscript/warnings/unsafe_property_access=1

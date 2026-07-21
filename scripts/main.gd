@@ -103,6 +103,7 @@ func _on_launcher_preview_changed(definitions: Array[BallDefinition]) -> void:
 
 func _on_game_mode_changed(mode: int) -> void:
 	_hud.set_challenge_mode(mode == GameModeDefinition.Mode.CHALLENGE)
+	AudioManager.play_mode_bgm(mode)
 
 func _on_challenge_wave_remaining_changed(remaining_seconds: int) -> void:
 	_hud.set_challenge_remaining(remaining_seconds)
@@ -111,6 +112,7 @@ func request_pause() -> bool:
 	if not _game_controller.pause_game():
 		return false
 	_pause_menu.show()
+	AudioManager.pause_music()
 	get_tree().paused = true
 	return true
 
@@ -119,7 +121,10 @@ func resume_game() -> bool:
 		return false
 	get_tree().paused = false
 	_pause_menu.hide()
-	return _game_controller.resume_game()
+	var resumed: bool = _game_controller.resume_game()
+	if resumed:
+		AudioManager.resume_music()
+	return resumed
 
 func _on_pause_button_pressed() -> void:
 	request_pause()
@@ -131,6 +136,7 @@ func restart_game() -> bool:
 	if not get_tree().paused:
 		return false
 	_game_session_store.clear_session(_game_controller.get_active_mode())
+	AudioManager.stop_music()
 	get_tree().paused = false
 	_pause_menu.hide()
 	_game_over_panel.hide()
@@ -146,6 +152,7 @@ func return_to_mode_selection() -> bool:
 	_game_over_panel.hide()
 	if not _game_controller.return_to_mode_selection():
 		return false
+	AudioManager.stop_music()
 	_set_gameplay_visible(false)
 	_mode_selection.show()
 	return true
@@ -162,6 +169,7 @@ func _on_game_over(final_score: int, _reached_turn: int) -> void:
 	_refresh_resume_actions()
 	var records: Dictionary = _score_record_store.record_score(active_mode, final_score)
 	_game_over_panel.call("show_results", final_score, records, active_mode)
+	AudioManager.pause_music()
 	get_tree().paused = true
 
 func _on_game_over_restart_requested() -> void:
@@ -188,6 +196,7 @@ func save_and_exit() -> bool:
 	_game_over_panel.hide()
 	if not _game_controller.return_to_mode_selection():
 		return false
+	AudioManager.stop_music()
 	_set_gameplay_visible(false)
 	_mode_selection.show()
 	_refresh_resume_actions()

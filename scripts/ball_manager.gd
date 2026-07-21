@@ -22,6 +22,7 @@ func launch_batch(batch: BallBatch, origin: Vector2, direction: Vector2, recover
 	assert(not _sequences_by_batch.has(batch.id), "A batch ID must be unique while it is active.")
 	var sequence: BallLaunchSequence = BallLaunchSequence.new(batch, origin, direction, recovery_terminal_position)
 	_sequences_by_batch[batch.id] = sequence
+	AudioManager.play_sfx(GameAudio.Sfx.LAUNCH)
 	_launch_next_ball(sequence)
 
 func _process(delta: float) -> void:
@@ -148,6 +149,7 @@ func _on_ball_recovered(_reason: StringName, batch_id: int, ball: Ball) -> void:
 	if sequence == null or not sequence.active_balls.has(ball.get_instance_id()):
 		return
 	sequence.active_balls.erase(ball.get_instance_id())
+	AudioManager.play_sfx(GameAudio.Sfx.RECOVER)
 	ball_recovered.emit(ball.definition, ball.get_recovery_direction())
 	if is_instance_valid(ball):
 		ball.queue_free()

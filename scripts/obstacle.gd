@@ -51,6 +51,7 @@ func receive_hit(context: HitContext) -> HitResult:
 	if applied_damage == 0:
 		return result
 	_health -= applied_damage
+	AudioManager.play_sfx(GameAudio.Sfx.BLOCK_HIT)
 	result.was_applied = true
 	damaged.emit(maxi(_health, 0))
 	if _health <= 0:
