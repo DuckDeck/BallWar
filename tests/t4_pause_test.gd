@@ -1,0 +1,53 @@
+# covers: [T4-AUTO-01]
+extends SceneTree
+
+const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
+
+func _initialize() -> void:
+	var main: Main = MAIN_SCENE.instantiate() as Main
+	root.add_child(main)
+	await process_frame
+	var controller: GameController = main.get_node("GameController") as GameController
+	var manager: BallManager = main.get_node("BallManager") as BallManager
+	var board: BoardController = main.get_node("BoardController") as BoardController
+	var clock: ChallengeWaveClock = main.get_node("ChallengeWaveClock") as ChallengeWaveClock
+	var pause_button: Button = main.get_node("CanvasLayer/PauseButton") as Button
+	var pause_menu: Control = main.get_node("CanvasLayer/PauseMenu") as Control
+	var save_exit_button: Button = pause_menu.get_node("SaveExitButton") as Button
+	controller.config.initial_ball_count = 1
+	main.start_game_by_mode_id(GameModeDefinition.Mode.CHALLENGE)
+	await physics_frame
+	controller.request_launch(Vector2.DOWN)
+	assert(manager.get_active_ball_count() == 1, "The pause test requires an active challenge ball.")
+	await physics_frame
+	var active_ball: Ball = manager.get_active_balls(1)[0]
+	var position_before_pause: Vector2 = active_ball.global_position
+	var elapsed_before_pause: int = controller.get_elapsed_seconds()
+	var wave_time_before_pause: float = clock.time_left
+	pause_button.pressed.emit()
+	assert(paused and controller.get_state() == GameController.State.PAUSED, "The pause button must freeze the game through the PAUSED state.")
+	assert(pause_menu.visible, "Pausing must show the pause overlay.")
+	assert(save_exit_button.disabled, "Save and exit must remain visibly disabled until persistent session storage is implemented.")
+	await create_timer(1.1, true).timeout
+	assert(active_ball.global_position.is_equal_approx(position_before_pause), "An active ball must not move while the tree is paused.")
+	assert(controller.get_elapsed_seconds() == elapsed_before_pause, "The session timer must freeze while paused.")
+	assert(is_equal_approx(clock.time_left, wave_time_before_pause), "The challenge wave clock must freeze while paused.")
+	pause_menu.emit_signal(&"resume_requested")
+	await physics_frame
+	assert(not paused and controller.get_state() == GameController.State.BALLS_ACTIVE, "Closing the pause overlay must resume the previous game state.")
+	assert(not pause_menu.visible, "The pause overlay must hide after resume.")
+	await create_timer(1.1).timeout
+	assert(controller.get_elapsed_seconds() > elapsed_before_pause, "The session timer must resume after closing the pause overlay.")
+	pause_button.pressed.emit()
+	assert(paused and controller.get_state() == GameController.State.PAUSED, "Restart must only be available from the paused menu.")
+	pause_menu.emit_signal(&"restart_requested")
+	await process_frame
+	assert(not paused, "Restarting must release the SceneTree pause state.")
+	assert(controller.get_state() == GameController.State.READY, "Restarting must return the current mode to its ready state.")
+	assert(controller.get_active_mode() == GameModeDefinition.Mode.CHALLENGE, "Restarting must preserve the selected challenge mode.")
+	assert(manager.get_active_ball_count() == 0, "Restarting must remove every active ball from the previous session.")
+	assert(controller.get_score() == 0 and controller.get_elapsed_seconds() == 0, "Restarting must reset score and session time.")
+	assert(board.get_obstacle_count() >= 4, "Restarting must create a fresh first row of board content.")
+	assert(not clock.is_stopped(), "Restarting challenge mode must start a fresh wave clock.")
+	print("T4 pause test passed: overlay, freeze, resume, and same-mode restart verified.")
+	quit(0)

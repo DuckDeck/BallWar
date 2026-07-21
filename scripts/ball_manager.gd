@@ -64,11 +64,26 @@ func get_pending_ball_count(batch_id: int) -> int:
 	var sequence: BallLaunchSequence = _get_sequence(batch_id)
 	return 0 if sequence == null else sequence.pending_definitions.size()
 
+func has_pending_launches() -> bool:
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		if not sequence.pending_definitions.is_empty() or sequence.awaiting_launcher_slot:
+			return true
+	return false
+
 func freeze_active_balls_for_game_over() -> void:
 	for sequence: BallLaunchSequence in _sequences_by_batch.values():
 		for ball: Ball in sequence.active_balls.values():
 			if is_instance_valid(ball):
 				ball.freeze_for_game_over()
+
+func reset_balls() -> void:
+	for sequence: BallLaunchSequence in _sequences_by_batch.values():
+		for ball: Ball in sequence.active_balls.values():
+			if is_instance_valid(ball):
+				ball.queue_free()
+	_sequences_by_batch.clear()
+	var empty_queue: Array[BallDefinition] = []
+	launch_queue_changed.emit(empty_queue)
 
 func begin_board_shift(offset: Vector2, duration_seconds: float) -> void:
 	for sequence: BallLaunchSequence in _sequences_by_batch.values():

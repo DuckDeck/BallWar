@@ -10,7 +10,7 @@ signal launcher_preview_changed(definitions: Array[BallDefinition])
 signal launcher_launchability_changed(is_ready: bool)
 signal launcher_presentation_changed(presentation: int)
 signal launcher_next_ball_release_requested(batch_id: int)
-signal classic_launcher_recovery_received(definition: BallDefinition, recovery_direction: float)
+signal launcher_preview_recovery_received(definition: BallDefinition, recovery_direction: float)
 signal challenge_wave_remaining_changed(remaining_seconds: int)
 signal game_mode_changed(mode: int)
 
@@ -19,6 +19,7 @@ enum State {
 	READY,
 	BALLS_ACTIVE,
 	RESOLVING,
+	PAUSED,
 	GAME_OVER,
 }
 
@@ -32,6 +33,7 @@ enum State {
 var _score: int = 0
 var _turn: int = 1
 var _state: State = State.MODE_SELECTION
+var _state_before_pause: State = State.MODE_SELECTION
 var _elapsed_time: float = 0.0
 var _displayed_elapsed_seconds: int = 0
 var _next_batch_id: int = 1
@@ -40,6 +42,7 @@ var _current_ball_count: int = 1
 var _ball_type_random: RandomNumberGenerator = RandomNumberGenerator.new()
 var _pending_timed_wave: bool = false
 var _challenge_available_definitions: Array[BallDefinition] = []
+var _challenge_queued_definitions: Array[BallDefinition] = []
 var _classic_available_definitions: Array[BallDefinition] = []
 var _classic_queued_definitions: Array[BallDefinition] = []
 var _classic_recovered_definitions: Array[BallDefinition] = []
@@ -74,15 +77,37 @@ func start_game_by_mode_id(mode: int) -> void:
 func start_game(mode: GameModeDefinition) -> void:
 	if _state != State.MODE_SELECTION:
 		return
+	_initialize_game(mode)
+
+func restart_game() -> bool:
+	if _active_mode == null or _state != State.PAUSED:
+		return false
+	challenge_wave_clock.stop_clock()
+	ball_manager.reset_balls()
+	board_controller.reset_board()
+	_state = State.MODE_SELECTION
+	_state_before_pause = State.MODE_SELECTION
+	_pending_timed_wave = false
+	_initialize_game(_active_mode)
+	return true
+
+func _initialize_game(mode: GameModeDefinition) -> void:
 	_active_mode = mode
+	_score = 0
+	_turn = 1
+	_next_batch_id = 1
 	_current_ball_count = config.initial_ball_count
 	_ball_type_random.seed = config.heavy_ball_random_seed
 	_challenge_available_definitions.clear()
+	_challenge_queued_definitions.clear()
 	_classic_available_definitions.clear()
 	_classic_queued_definitions.clear()
 	_classic_recovered_definitions.clear()
 	_elapsed_time = 0.0
 	_displayed_elapsed_seconds = 0
+	score_changed.emit(_score)
+	turn_changed.emit(_turn)
+	elapsed_time_changed.emit(_displayed_elapsed_seconds)
 	board_controller.initialize_board(_current_ball_count)
 	if _active_mode.uses_timed_waves():
 		_challenge_available_definitions.append_array(_build_ball_definitions())
@@ -101,7 +126,7 @@ func start_game(mode: GameModeDefinition) -> void:
 		_publish_launcher_presentation()
 
 func _process(delta: float) -> void:
-	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:
+	if _state == State.MODE_SELECTION or _state == State.PAUSED or _state == State.GAME_OVER:
 		return
 	_elapsed_time += delta
 	var elapsed_seconds: int = int(_elapsed_time)
@@ -111,7 +136,7 @@ func _process(delta: float) -> void:
 	elapsed_time_changed.emit(_displayed_elapsed_seconds)
 
 func _physics_process(_delta: float) -> void:
-	if not _pending_timed_wave or _state == State.GAME_OVER:
+	if not _pending_timed_wave or _state == State.PAUSED or _state == State.GAME_OVER:
 		return
 	_pending_timed_wave = false
 	_resolve_timed_wave()
@@ -144,6 +169,19 @@ func request_launch(direction: Vector2, preferred_definition: BallDefinition = n
 func get_state() -> State:
 	return _state
 
+func pause_game() -> bool:
+	if _state == State.MODE_SELECTION or _state == State.PAUSED or _state == State.GAME_OVER:
+		return false
+	_state_before_pause = _state
+	_set_state(State.PAUSED)
+	return true
+
+func resume_game() -> bool:
+	if _state != State.PAUSED:
+		return false
+	_set_state(_state_before_pause)
+	return true
+
 func get_score() -> int:
 	return _score
 
@@ -151,7 +189,7 @@ func get_launcher_preview_definitions() -> Array[BallDefinition]:
 	if _state == State.MODE_SELECTION:
 		return []
 	if _active_mode != null and _active_mode.uses_timed_waves():
-		return _challenge_available_definitions.duplicate()
+		return _challenge_queued_definitions.duplicate() if not _challenge_queued_definitions.is_empty() else _challenge_available_definitions.duplicate()
 	if not _classic_queued_definitions.is_empty():
 		return _classic_queued_definitions.duplicate()
 	if _state == State.BALLS_ACTIVE or _state == State.RESOLVING:
@@ -247,18 +285,22 @@ func _resolve_timed_wave() -> void:
 
 func _on_launch_queue_changed(queued_definitions: Array[BallDefinition]) -> void:
 	if _active_mode != null and _active_mode.uses_timed_waves():
-		return
-	_classic_queued_definitions = queued_definitions.duplicate()
+		_challenge_queued_definitions = queued_definitions.duplicate()
+	else:
+		_classic_queued_definitions = queued_definitions.duplicate()
+	# 两种模式的顺序发射都会改变顶部预览；挑战模式不能保留旧队首画面。
 	_publish_launcher_preview()
-	_publish_launcher_presentation()
+	if _active_mode == null or not _active_mode.uses_timed_waves():
+		_publish_launcher_presentation()
 
 func _on_ball_recovered(definition: BallDefinition, recovery_direction: float) -> void:
 	if _active_mode == null or _state == State.GAME_OVER:
 		return
 	if _active_mode.uses_timed_waves():
+		launcher_preview_recovery_received.emit(definition, recovery_direction)
 		_challenge_available_definitions.append(definition)
 	else:
-		classic_launcher_recovery_received.emit(definition, recovery_direction)
+		launcher_preview_recovery_received.emit(definition, recovery_direction)
 		_classic_recovered_definitions.append(definition)
 	_publish_launcher_preview()
 	_publish_launcher_presentation()
@@ -268,9 +310,6 @@ func confirm_launcher_next_ball_release(batch_id: int, preferred_definition: Bal
 	ball_manager.release_next_ball(batch_id, preferred_definition)
 
 func _on_next_ball_release_requested(batch_id: int) -> void:
-	if _active_mode != null and _active_mode.uses_timed_waves():
-		ball_manager.release_next_ball(batch_id)
-		return
 	launcher_next_ball_release_requested.emit(batch_id)
 
 func _move_preferred_definition_to_front(definitions: Array[BallDefinition], preferred_definition: BallDefinition) -> void:
@@ -298,10 +337,10 @@ func _publish_launcher_presentation() -> void:
 	launcher_presentation_changed.emit(presentation)
 
 func can_request_launch() -> bool:
-	if _state == State.MODE_SELECTION or _state == State.GAME_OVER:
+	if _state == State.MODE_SELECTION or _state == State.PAUSED or _state == State.GAME_OVER:
 		return false
 	if _active_mode != null and _active_mode.uses_timed_waves():
-		return not _challenge_available_definitions.is_empty()
+		return not _challenge_available_definitions.is_empty() and not ball_manager.has_pending_launches()
 	return _state == State.READY
 
 func _on_board_game_over_requested() -> void:

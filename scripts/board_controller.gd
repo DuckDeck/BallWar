@@ -20,6 +20,7 @@ var _generated_wave_count: int = 0
 var _last_resolved_batch_id: int = -1
 var _is_game_over: bool = false
 var _is_timed_wave_animating: bool = false
+var _active_scroll_tween: Tween
 
 func _ready() -> void:
 	assert(config != null, "BoardController requires a GameConfig resource.")
@@ -32,6 +33,21 @@ func initialize_board(next_ball_count: int = 1) -> void:
 	_generated_wave_count = 0
 	_wave_generator.reset(_get_session_wave_seed())
 	_spawn_bottom_row(next_ball_count)
+
+func reset_board() -> void:
+	if is_instance_valid(_active_scroll_tween):
+		_active_scroll_tween.kill()
+	_active_scroll_tween = null
+	for board_node: Node2D in _board_nodes_by_id.values():
+		if is_instance_valid(board_node):
+			board_node.queue_free()
+	_board_nodes_by_id.clear()
+	_state.clear()
+	_next_board_node_id = 1
+	_generated_wave_count = 0
+	_last_resolved_batch_id = -1
+	_is_game_over = false
+	_is_timed_wave_animating = false
 
 func get_obstacle_count() -> int:
 	return _state.get_obstacle_count()
@@ -77,6 +93,7 @@ func _advance_wave(next_ball_count: int) -> bool:
 func _animate_timed_wave(cells_by_obstacle_id: Dictionary, scroll_offset: Vector2, scroll_duration_seconds: float) -> void:
 	timed_wave_scroll_started.emit(scroll_offset, scroll_duration_seconds)
 	var scroll_tween: Tween = create_tween()
+	_active_scroll_tween = scroll_tween
 	scroll_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	scroll_tween.set_parallel(true)
 	for obstacle_id: int in cells_by_obstacle_id.keys():
@@ -86,6 +103,9 @@ func _animate_timed_wave(cells_by_obstacle_id: Dictionary, scroll_offset: Vector
 		var cell: Vector2i = cells_by_obstacle_id[obstacle_id] as Vector2i
 		scroll_tween.tween_property(board_node, "global_position", _layout.get_cell_center(cell), scroll_duration_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await scroll_tween.finished
+	if _active_scroll_tween != scroll_tween:
+		return
+	_active_scroll_tween = null
 	if _is_game_over:
 		_is_timed_wave_animating = false
 		return

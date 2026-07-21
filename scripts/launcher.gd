@@ -24,19 +24,12 @@ class PreviewBall:
 		position = initial_position
 		velocity = initial_velocity
 
-const REFILL_ANIMATION_SECONDS: float = 0.08
-
 var _is_dragging: bool = false
 var _is_launch_ready: bool = true
 var _launch_ready_requested: bool = true
 var _pointer_position: Vector2 = Vector2.ZERO
 var _waiting_definitions: Array[BallDefinition] = []
 var _presentation: Presentation = Presentation.CLASSIC_BLOCKED
-var _visual_positions: Array[Vector2] = []
-var _visual_start_positions: Array[Vector2] = []
-var _visual_target_positions: Array[Vector2] = []
-var _visual_elapsed_seconds: float = 0.0
-var _is_layout_animating: bool = false
 var _classic_preview_balls: Array[PreviewBall] = []
 var _classic_gate_open: bool = false
 var _classic_recovery_directions_by_color: Dictionary = {}
@@ -94,30 +87,17 @@ func is_launch_ready() -> bool:
 	return _is_launch_ready
 
 func set_waiting_ball_definitions(definitions: Array[BallDefinition]) -> void:
-	var previous_definitions: Array[BallDefinition] = _waiting_definitions.duplicate()
-	var previous_positions: Array[Vector2] = _visual_positions.duplicate()
 	_waiting_definitions.clear()
 	_waiting_definitions.append_array(definitions)
-	if _uses_classic_preview_physics():
-		_sync_classic_preview_balls()
-		return
-	_refresh_visual_layout(previous_definitions, previous_positions)
+	_sync_classic_preview_balls()
 
 func set_presentation(presentation: Presentation) -> void:
 	if _presentation == presentation:
 		return
-	var previous_definitions: Array[BallDefinition] = _waiting_definitions.duplicate()
-	var previous_positions: Array[Vector2] = _visual_positions.duplicate()
 	_presentation = presentation
-	if _uses_classic_preview_physics():
-		_classic_gate_open = _presentation == Presentation.CLASSIC_OPEN
-		_sync_classic_preview_balls()
-		_update_launch_readiness()
-		queue_redraw()
-		return
-	_classic_preview_balls.clear()
-	_pending_release_batch_id = -1
-	_refresh_visual_layout(previous_definitions, previous_positions)
+	# 经典和挑战共用同一套凹槽重力与碰撞预览；挑战模式从开始就保持开口。
+	_classic_gate_open = _presentation != Presentation.CLASSIC_BLOCKED
+	_sync_classic_preview_balls()
 	_update_launch_readiness()
 	queue_redraw()
 
@@ -136,15 +116,15 @@ func get_classic_preview_positions() -> Array[Vector2]:
 		positions.append(preview_ball.position)
 	return positions
 
-func set_classic_recovery_direction(definition: BallDefinition, recovery_direction: float) -> void:
+func get_challenge_preview_positions() -> Array[Vector2]:
+	return get_classic_preview_positions()
+
+func set_preview_recovery_direction(definition: BallDefinition, recovery_direction: float) -> void:
 	if definition == null:
 		return
 	_classic_recovery_directions_by_color[definition.visual_color] = recovery_direction
 
 func request_next_ball_release(batch_id: int) -> void:
-	if not _uses_classic_preview_physics():
-		next_ball_release_ready.emit(batch_id, _get_current_launch_definition())
-		return
 	_pending_release_batch_id = batch_id
 	_emit_pending_release_if_ready()
 
@@ -187,14 +167,8 @@ func get_aim_guide_segments(direction: Vector2) -> Array[PackedVector2Array]:
 	return segments
 
 func _draw() -> void:
-	if _uses_classic_preview_physics():
-		for preview_ball: PreviewBall in _classic_preview_balls:
-			draw_circle(preview_ball.position, _get_ball_radius(preview_ball.definition), preview_ball.definition.visual_color)
-	else:
-		for index: int in _waiting_definitions.size():
-			var definition: BallDefinition = _waiting_definitions[index]
-			var position: Vector2 = _visual_positions[index] if index < _visual_positions.size() else _get_challenge_waiting_ball_position(index, definition)
-			draw_circle(position, _get_ball_radius(definition), definition.visual_color)
+	for preview_ball: PreviewBall in _classic_preview_balls:
+		draw_circle(preview_ball.position, _get_ball_radius(preview_ball.definition), preview_ball.definition.visual_color)
 	if _is_dragging:
 		var aim_direction: Vector2 = _pointer_position - global_position
 		if aim_direction.length_squared() > 0.0:
@@ -209,13 +183,10 @@ func _draw() -> void:
 				draw_dashed_line(to_local(reflected_segment[0]), to_local(reflected_segment[1]), reflected_color, 3.0, 10.0)
 
 func _process(delta: float) -> void:
-	if _uses_classic_preview_physics():
-		_process_classic_preview_physics(delta)
-		return
-	_process_challenge_layout_animation(delta)
+	_process_classic_preview_physics(delta)
 
 func _uses_classic_preview_physics() -> bool:
-	return _presentation == Presentation.CLASSIC_BLOCKED or _presentation == Presentation.CLASSIC_OPEN
+	return _presentation == Presentation.CLASSIC_BLOCKED or _presentation == Presentation.CLASSIC_OPEN or _presentation == Presentation.CHALLENGE
 
 func _sync_classic_preview_balls() -> void:
 	var next_preview_balls: Array[PreviewBall] = []
@@ -418,64 +389,7 @@ func _update_launch_readiness() -> void:
 	if not _launch_ready_requested:
 		_is_launch_ready = false
 		return
-	if _uses_classic_preview_physics():
-		_is_launch_ready = _presentation == Presentation.CLASSIC_OPEN and has_classic_launch_slot_ball()
-		return
-	_is_launch_ready = not _is_layout_animating
-
-func _get_challenge_waiting_ball_position(index: int, definition: BallDefinition = null) -> Vector2:
-	if index == 0:
-		return Vector2.ZERO
-	var layer: int = (index + 1) / 2
-	var side: float = -1.0 if index % 2 == 1 else 1.0
-	var radius: float = _get_ball_radius(definition)
-	var horizontal_spacing: float = radius * 1.25
-	var vertical_spacing: float = radius * 1.30
-	return Vector2(side * float(layer) * horizontal_spacing, -float(layer) * vertical_spacing)
-
-func _refresh_visual_layout(previous_definitions: Array[BallDefinition], previous_positions: Array[Vector2]) -> void:
-	var target_positions: Array[Vector2] = []
-	for index: int in _waiting_definitions.size():
-		target_positions.append(_get_challenge_waiting_ball_position(index, _waiting_definitions[index]))
-	var start_positions: Array[Vector2] = []
-	for index: int in _waiting_definitions.size():
-		start_positions.append(_find_previous_visual_position(_waiting_definitions[index], previous_definitions, previous_positions, target_positions[index]))
-	if target_positions.is_empty():
-		_visual_positions = target_positions
-		_is_layout_animating = false
-		set_process(false)
-		queue_redraw()
-		return
-	_visual_positions = start_positions
-	_visual_start_positions = start_positions
-	_visual_target_positions = target_positions
-	_visual_elapsed_seconds = 0.0
-	_is_layout_animating = true
-	set_process(true)
-	queue_redraw()
-
-func _find_previous_visual_position(definition: BallDefinition, previous_definitions: Array[BallDefinition], previous_positions: Array[Vector2], fallback: Vector2) -> Vector2:
-	for index: int in previous_definitions.size():
-		if index < previous_positions.size() and previous_definitions[index].visual_color == definition.visual_color:
-			return previous_positions[index]
-	return fallback
-
-func _process_challenge_layout_animation(delta: float) -> void:
-	if not _is_layout_animating:
-		set_process(false)
-		return
-	_visual_elapsed_seconds += delta
-	var progress: float = clampf(_visual_elapsed_seconds / REFILL_ANIMATION_SECONDS, 0.0, 1.0)
-	var eased_progress: float = 1.0 - pow(1.0 - progress, 2.0)
-	for index: int in _visual_positions.size():
-		_visual_positions[index] = _visual_start_positions[index].lerp(_visual_target_positions[index], eased_progress)
-	queue_redraw()
-	if not is_equal_approx(progress, 1.0):
-		return
-	_is_layout_animating = false
-	set_process(false)
-	_update_launch_readiness()
-	queue_redraw()
+	_is_launch_ready = _presentation != Presentation.CLASSIC_BLOCKED and has_classic_launch_slot_ball()
 
 func _get_ball_radius(definition: BallDefinition) -> float:
 	var radius_multiplier: float = 1.0 if definition == null else definition.radius_multiplier

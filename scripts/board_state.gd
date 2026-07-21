@@ -4,6 +4,10 @@ extends RefCounted
 var _cells: Dictionary = {}
 var _cell_by_obstacle_id: Dictionary = {}
 
+func clear() -> void:
+	_cells.clear()
+	_cell_by_obstacle_id.clear()
+
 func register_obstacle(obstacle_id: int, cell: Vector2i) -> bool:
 	if _cells.has(cell):
 		return false
