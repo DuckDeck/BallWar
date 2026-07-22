@@ -11,6 +11,7 @@ const GAME_SESSION_STORE_SCRIPT: GDScript = preload("res://scripts/game_session_
 @onready var _hud: GameHud = %Hud
 @onready var _pause_menu: Control = %PauseMenu
 @onready var _game_over_panel: Control = %GameOverPanel
+@onready var _progress_dialog: ProgressDialog = %ProgressDialog
 @onready var _mode_selection: ModeSelection = %ModeSelection
 @onready var _arena_renderer: Node2D = $ArenaRenderer
 
@@ -36,13 +37,14 @@ func _ready() -> void:
 	_game_controller.game_over.connect(_on_game_over)
 	_game_controller.session_checkpoint_changed.connect(_on_session_checkpoint_changed)
 	_mode_selection.mode_selected.connect(_on_mode_selected)
-	_mode_selection.resume_selected.connect(_on_resume_selected)
 	_hud.pause_requested.connect(_on_pause_button_pressed)
 	_pause_menu.connect(&"resume_requested", _on_pause_menu_resume_requested)
 	_pause_menu.connect(&"restart_requested", _on_pause_menu_restart_requested)
 	_pause_menu.connect(&"save_exit_requested", _on_pause_menu_save_exit_requested)
 	_game_over_panel.connect(&"restart_requested", _on_game_over_restart_requested)
 	_game_over_panel.connect(&"menu_requested", _on_game_over_menu_requested)
+	_progress_dialog.continue_requested.connect(_on_progress_continue_requested)
+	_progress_dialog.discard_requested.connect(_on_progress_discard_requested)
 	_launcher.set_waiting_ball_definitions(_game_controller.get_launcher_preview_definitions())
 	_launcher.next_ball_release_ready.connect(_on_launcher_next_ball_release_ready)
 	_launcher.set_launch_ready(false)
@@ -50,26 +52,39 @@ func _ready() -> void:
 	_hud.set_elapsed_time(_game_controller.get_elapsed_seconds())
 	_pause_menu.hide()
 	_game_over_panel.hide()
+	_progress_dialog.hide_dialog()
 	_set_gameplay_visible(false)
-	_refresh_resume_actions()
 
 func start_game_by_mode_id(mode: int) -> void:
-	_on_mode_selected(mode)
+	_start_new_game(mode)
 
 func _on_mode_selected(mode: int) -> void:
+	var snapshot: Dictionary = _game_session_store.load_session(mode)
+	if not snapshot.is_empty():
+		_progress_dialog.show_progress(mode, int(snapshot.get("score", 0)))
+		return
+	_start_new_game(mode)
+
+func _start_new_game(mode: int) -> void:
 	_game_session_store.clear_session(mode)
+	_progress_dialog.hide_dialog()
 	_mode_selection.hide()
 	_set_gameplay_visible(true)
 	_game_controller.start_game_by_mode_id(mode)
 
-func _on_resume_selected(mode: int) -> void:
+func _on_progress_continue_requested(mode: int) -> void:
 	var snapshot: Dictionary = _game_session_store.load_session(mode)
 	if snapshot.is_empty() or not _game_controller.restore_session(snapshot):
 		_game_session_store.clear_session(mode)
-		_refresh_resume_actions()
+		_start_new_game(mode)
 		return
+	_progress_dialog.hide_dialog()
 	_mode_selection.hide()
 	_set_gameplay_visible(true)
+
+func _on_progress_discard_requested(mode: int) -> void:
+	_game_session_store.clear_session(mode)
+	_start_new_game(mode)
 
 func _on_score_changed(score: int) -> void:
 	_hud.set_score(score)
@@ -141,7 +156,6 @@ func restart_game() -> bool:
 	_pause_menu.hide()
 	_game_over_panel.hide()
 	var restarted: bool = _game_controller.restart_game()
-	_refresh_resume_actions()
 	return restarted
 
 func return_to_mode_selection() -> bool:
@@ -166,7 +180,6 @@ func _on_pause_menu_save_exit_requested() -> void:
 func _on_game_over(final_score: int, _reached_turn: int) -> void:
 	var active_mode: int = _game_controller.get_active_mode()
 	_game_session_store.clear_session(active_mode)
-	_refresh_resume_actions()
 	var records: Dictionary = _score_record_store.record_score(active_mode, final_score)
 	_game_over_panel.call("show_results", final_score, records, active_mode)
 	AudioManager.pause_music()
@@ -199,26 +212,18 @@ func save_and_exit() -> bool:
 	AudioManager.stop_music()
 	_set_gameplay_visible(false)
 	_mode_selection.show()
-	_refresh_resume_actions()
 	return true
 
 func _on_session_checkpoint_changed(snapshot: Dictionary) -> void:
 	if snapshot.is_empty():
 		return
 	_game_session_store.save_session(int(snapshot.get("mode", GameModeDefinition.Mode.CLASSIC)), snapshot)
-	_refresh_resume_actions()
 
 func _persist_current_session() -> bool:
 	var snapshot: Dictionary = _game_controller.get_session_snapshot()
 	if snapshot.is_empty():
-		return false
+		return true
 	return _game_session_store.save_session(_game_controller.get_active_mode(), snapshot)
-
-func _refresh_resume_actions() -> void:
-	_mode_selection.set_resume_available(
-		_game_session_store.has_session(GameModeDefinition.Mode.CLASSIC),
-		_game_session_store.has_session(GameModeDefinition.Mode.CHALLENGE)
-	)
 
 func _notification(what: int) -> void:
 	if _game_session_store == null:

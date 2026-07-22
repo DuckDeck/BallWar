@@ -58,7 +58,10 @@ func _initialize() -> void:
 	await process_frame
 	assert(not paused and controller.get_state() == GameController.State.MODE_SELECTION, "Save and exit must return to the mode selection screen.")
 	assert(main.get_node("CanvasLayer/ModeSelection").visible, "Mode selection must be visible after saving and exiting.")
-	assert(main.get_node("CanvasLayer/ModeSelection/ChallengeContinueButton").visible, "Challenge save data must expose a dedicated continue action.")
+	assert(main.get_node_or_null("CanvasLayer/ModeSelection/ChallengeContinueButton") == null, "Mode selection must not create a dedicated continue button.")
+	main.get_node("CanvasLayer/ModeSelection").emit_signal(&"mode_selected", GameModeDefinition.Mode.CHALLENGE)
+	await process_frame
+	assert(main.get_node("CanvasLayer/ProgressDialog").visible, "Selecting a mode with a saved session must show the progress confirmation dialog.")
 	var session_store: GameSessionStore = GameSessionStore.new(TEST_SESSION_PATH)
 	session_store.clear_session(GameModeDefinition.Mode.CLASSIC)
 	session_store.clear_session(GameModeDefinition.Mode.CHALLENGE)

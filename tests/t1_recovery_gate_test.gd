@@ -17,7 +17,6 @@ func _initialize() -> void:
 	var manager: BallManager = main.get_node("BallManager") as BallManager
 	var ball_layer: Node2D = main.get_node("BallLayer") as Node2D
 	controller.config.initial_ball_count = 1
-	controller.config.maximum_ball_count = 1
 	controller.config.ball_max_lifetime = 0.01
 	var launcher: Launcher = main.get_node("Launcher") as Launcher
 	var launcher_frames: int = 0

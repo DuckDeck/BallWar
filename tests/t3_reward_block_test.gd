@@ -12,7 +12,6 @@ func _initialize() -> void:
 	var manager: BallManager = main.get_node("BallManager") as BallManager
 	var board: BoardController = main.get_node("BoardController") as BoardController
 	controller.config.initial_ball_count = 1
-	controller.config.maximum_ball_count = 4
 	controller.config.heavy_ball_spawn_probability = 0.0
 	controller.config.reward_start_wave = 1
 	controller.config.add_ball_reward_probability = 1.0
@@ -27,6 +26,9 @@ func _initialize() -> void:
 	var hit_result: HitResult = reward.receive_hit(hit_context)
 	assert(not hit_result.should_bounce and hit_result.points_awarded == 0, "Rewards must disappear without score or bounce.")
 	assert(manager.get_active_ball_count() == 2, "An add-ball reward must immediately create a gravity-drop ball in the current batch.")
+	for reward_index: int in 12:
+		controller._on_reward_collected(RewardBlock.Type.ADD_BALL, source_ball, source_ball.global_position)
+	assert(manager.get_active_ball_count() == 14, "Add-ball rewards must not be constrained by an artificial inventory limit.")
 	var active_balls: Array[Ball] = manager.get_active_balls(1)
 	var dropped_ball: Ball = active_balls[0] if active_balls[1] == source_ball else active_balls[1]
 	assert(dropped_ball.runtime_state.is_gravity_enabled and dropped_ball.velocity.is_zero_approx(), "The reward ball must begin as a zero-speed gravity drop.")
@@ -35,7 +37,7 @@ func _initialize() -> void:
 		ball.force_recover(&"test")
 	for frame: int in 8:
 		await process_frame
-	assert(controller.get_launcher_preview_definitions().size() == 2, "An add-ball reward must permanently increase the next classic batch inventory.")
+	assert(controller.get_launcher_preview_definitions().size() == 14, "Every add-ball reward must permanently increase the next classic batch inventory.")
 	controller.request_launch(Vector2.DOWN)
 	var normal_ball: Ball = manager.get_active_balls(2)[0]
 	assert(normal_ball.definition.type == BallDefinition.Type.NORMAL, "The normal-ball branch requires a normal source ball.")

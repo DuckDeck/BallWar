@@ -48,6 +48,7 @@ var _classic_available_definitions: Array[BallDefinition] = []
 var _classic_queued_definitions: Array[BallDefinition] = []
 var _classic_recovered_definitions: Array[BallDefinition] = []
 var _classic_checkpoint: Dictionary = {}
+var _challenge_has_persistable_progress: bool = false
 
 func _ready() -> void:
 	assert(config != null, "GameController requires a GameConfig resource.")
@@ -106,6 +107,7 @@ func return_to_mode_selection() -> bool:
 	_classic_queued_definitions.clear()
 	_classic_recovered_definitions.clear()
 	_classic_checkpoint.clear()
+	_challenge_has_persistable_progress = false
 	_score = 0
 	_turn = 1
 	_elapsed_time = 0.0
@@ -135,6 +137,7 @@ func _initialize_game(mode: GameModeDefinition) -> void:
 	_classic_queued_definitions.clear()
 	_classic_recovered_definitions.clear()
 	_classic_checkpoint.clear()
+	_challenge_has_persistable_progress = false
 	_elapsed_time = 0.0
 	_displayed_elapsed_seconds = 0
 	score_changed.emit(_score)
@@ -185,6 +188,7 @@ func request_launch(direction: Vector2, preferred_definition: BallDefinition = n
 	if _active_mode != null and _active_mode.uses_timed_waves():
 		definitions = _challenge_available_definitions.duplicate()
 		_challenge_available_definitions.clear()
+		_challenge_has_persistable_progress = true
 		recovery_terminal_position = config.launcher_position
 	else:
 		definitions = _classic_available_definitions.duplicate()
@@ -235,6 +239,8 @@ func get_active_mode() -> int:
 func get_session_snapshot() -> Dictionary:
 	if _active_mode == null or _state == State.MODE_SELECTION or _state == State.GAME_OVER:
 		return {}
+	if _active_mode.uses_timed_waves() and not _challenge_has_persistable_progress:
+		return {}
 	if not _active_mode.uses_timed_waves():
 		return _classic_checkpoint.duplicate(true)
 	return _build_session_snapshot(_get_challenge_recoverable_definitions(), challenge_wave_clock.time_left)
@@ -274,6 +280,7 @@ func restore_session(snapshot: Dictionary) -> bool:
 	_classic_recovered_definitions.clear()
 	if _active_mode.uses_timed_waves():
 		_challenge_available_definitions.append_array(restored_definitions)
+		_challenge_has_persistable_progress = true
 		var remaining_seconds: float = float(snapshot.get("challenge_remaining_seconds", _active_mode.timed_wave_interval_seconds))
 		challenge_wave_clock.resume_clock(_active_mode.timed_wave_interval_seconds, remaining_seconds)
 	else:
@@ -378,8 +385,6 @@ func _on_reward_collected(reward_type: int, source_ball: Ball, reward_position: 
 	source_ball.become_heavy(config.heavy_ball_radius_multiplier, config.heavy_ball_gravity_multiplier, config.heavy_ball_double_damage_probability)
 
 func _spawn_persistent_bonus_ball(source_ball: Ball, definition: BallDefinition, reward_position: Vector2) -> void:
-	if _current_ball_count >= config.maximum_ball_count:
-		return
 	if not ball_manager.spawn_bonus_ball(source_ball, definition, reward_position):
 		return
 	_current_ball_count += 1
@@ -421,6 +426,7 @@ func _resolve_timed_wave() -> void:
 	var is_safe_wave: bool = board_controller.resolve_timed_wave(_current_ball_count, _active_mode.timed_wave_scroll_duration_seconds)
 	if not is_safe_wave:
 		return
+	_challenge_has_persistable_progress = true
 
 func _on_launch_queue_changed(queued_definitions: Array[BallDefinition]) -> void:
 	if _active_mode != null and _active_mode.uses_timed_waves():

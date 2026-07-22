@@ -16,7 +16,6 @@ extends Resource
 
 @export_group("Ball Batch")
 @export_range(1, 10, 1) var initial_ball_count: int = 1
-@export_range(1, 30, 1) var maximum_ball_count: int = 10
 @export_range(0.0, 30.0, 0.5) var launch_spread_degrees: float = 0.0
 @export_range(0.02, 0.50, 0.01, "suffix:s") var ball_launch_interval_seconds: float = 0.10
 @export var ball_palette: PackedColorArray = PackedColorArray([

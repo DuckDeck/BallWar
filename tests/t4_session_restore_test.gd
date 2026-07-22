@@ -25,17 +25,20 @@ func _initialize() -> void:
 	restored_classic_main.queue_free()
 	await process_frame
 	var challenge_main: Main = _create_main()
+	var challenge_store: GameSessionStore = GameSessionStore.new(TEST_SESSION_PATH)
+	challenge_store.clear_session(GameModeDefinition.Mode.CHALLENGE)
 	challenge_main.start_game_by_mode_id(GameModeDefinition.Mode.CHALLENGE)
 	await physics_frame
+	assert(not challenge_store.has_session(GameModeDefinition.Mode.CHALLENGE), "Entering a fresh challenge must not create resumable progress before gameplay begins.")
 	var challenge_controller: GameController = challenge_main.get_node("GameController") as GameController
 	challenge_controller.request_launch(Vector2.DOWN)
 	await physics_frame
-	var challenge_snapshot: Dictionary = challenge_controller.get_session_snapshot()
-	assert(not challenge_snapshot.is_empty(), "Challenge mode must snapshot an active run.")
+	assert(challenge_main.request_pause() and challenge_main.save_and_exit(), "A challenge run with launched balls must save and exit successfully.")
+	assert(challenge_store.has_session(GameModeDefinition.Mode.CHALLENGE), "A played challenge must persist independently after save and exit.")
+	var challenge_snapshot: Dictionary = challenge_store.load_session(GameModeDefinition.Mode.CHALLENGE)
 	challenge_main.queue_free()
 	await process_frame
 	var restored_challenge_main: Main = _create_main()
-	var challenge_store: GameSessionStore = GameSessionStore.new(TEST_SESSION_PATH)
 	assert(challenge_store.save_session(GameModeDefinition.Mode.CHALLENGE, challenge_snapshot), "Challenge data must persist independently from classic data.")
 	assert(restored_challenge_main.get_node("GameController").restore_session(challenge_store.load_session(GameModeDefinition.Mode.CHALLENGE)), "Challenge snapshot must restore successfully.")
 	var restored_challenge: GameController = restored_challenge_main.get_node("GameController") as GameController

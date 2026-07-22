@@ -39,7 +39,6 @@ func _initialize() -> void:
 	assert(_damage_events == 3, "Three valid hits must apply exactly three obstacle damage events.")
 	assert(_score == 10, "Destroying one health-3 obstacle must award ten points exactly once.")
 	controller.config.initial_ball_count = 1
-	controller.config.maximum_ball_count = 1
 	controller.config.ball_gravity = 1400.0
 	controller.config.ball_max_lifetime = 1.2
 	for turn_index: int in 3:

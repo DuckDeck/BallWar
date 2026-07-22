@@ -20,6 +20,7 @@
 [ext_resource type="FontFile" path="res://assets/fonts/BallWarIconFont.ttf" id="18_icon_font"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="19_game_over_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="20_hud"]
+[ext_resource type="Script" path="res://scripts/ui/progress_dialog.gd" id="21_progress_dialog"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_left_wall"]
 a = Vector2(72, 240)
@@ -229,28 +230,14 @@ theme_override_fonts/font = ExtResource("14_menu_font")
 theme_override_font_sizes/font_size = 50
 text = "挑战模式"
 
-[node name="ClassicContinueButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=213963212]
+[node name="ProgressDialog" type="Control" parent="CanvasLayer" unique_id=1237571217]
 unique_name_in_owner = true
-layout_mode = 0
-offset_left = 84.0
-offset_top = 1330.0
-offset_right = 516.0
-offset_bottom = 1428.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("14_menu_font")
-theme_override_font_sizes/font_size = 36
-text = "继续经典模式"
-visible = false
-
-[node name="ChallengeContinueButton" type="Button" parent="CanvasLayer/ModeSelection" unique_id=828280410]
-unique_name_in_owner = true
-layout_mode = 0
-offset_left = 564.0
-offset_top = 1330.0
-offset_right = 996.0
-offset_bottom = 1428.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("14_menu_font")
-theme_override_font_sizes/font_size = 36
-text = "继续挑战模式"
-visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("21_progress_dialog")
+ui_font = ExtResource("14_menu_font")
