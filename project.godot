@@ -37,6 +37,10 @@ window/size/initial_height=960
 
 project/assembly_name="Ball War"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-ohos/plugin.cfg")
+
 [input]
 
 launch_primary={

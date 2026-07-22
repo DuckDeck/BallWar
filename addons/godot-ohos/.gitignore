@@ -1,0 +1,11 @@
+build/
+
+bin/*
+!bin/.godothub
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
